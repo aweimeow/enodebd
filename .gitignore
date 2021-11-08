@@ -1,0 +1,11 @@
+lte/
+orc8r/
+metrics_pb2.py
+metrics_pb2_grpc.py
+
+### Python ###
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
