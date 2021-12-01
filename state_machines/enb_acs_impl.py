@@ -65,6 +65,7 @@ class BasicEnodebAcsStateMachine(EnodebAcsStateMachine):
         self.mme_timeout_handler = None
         self.mme_timer = None
         self._start_state_machine(service)
+        
 
     def get_state(self) -> str:
         if self.state is None:

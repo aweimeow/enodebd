@@ -18,6 +18,7 @@ from typing import Any, Optional, Union
 from lte.protos.mconfig import mconfigs_pb2
 from common.misc_utils import get_ip_from_if
 from configuration.exceptions import LoadConfigError
+from configuration.service_configs import load_enb_config, load_common_config
 from configuration.mconfig_managers import load_service_mconfig_as_json
 from data_models.data_model import DataModel
 from data_models.data_model_parameters import ParameterName
@@ -78,6 +79,9 @@ def build_desired_config(
     Returns:
         Desired data model configuration for the device
     """
+
+    print("DEVICE CFG: ", device_config)
+
     cfg_desired = EnodebConfiguration(data_model)
 
     # Determine configuration parameters
@@ -150,6 +154,7 @@ def _get_enb_yang_config(
         config = json.loads(
             load_service_mconfig_as_json('yang').get('value', '{}'),
         )
+
         enb.extend(
             filter(
                 lambda entry: entry['serial'] == enb_serial,
@@ -185,68 +190,43 @@ def _get_enb_config(
         mconfig: mconfigs_pb2.EnodebD,
         device_config: EnodebConfiguration,
 ) -> SingleEnodebConfig:
-    # For fields that are specified per eNB
-    if mconfig.enb_configs_by_serial is not None and \
-            len(mconfig.enb_configs_by_serial) > 0:
-        enb_serial = \
-            device_config.get_parameter(ParameterName.SERIAL_NUMBER)
-        if enb_serial in mconfig.enb_configs_by_serial:
-            enb_config = mconfig.enb_configs_by_serial[enb_serial]
-            earfcndl = enb_config.earfcndl
-            pci = enb_config.pci
-            allow_enodeb_transmit = enb_config.transmit_enabled
-            tac = enb_config.tac
-            bandwidth_mhz = enb_config.bandwidth_mhz
-            cell_id = enb_config.cell_id
-            duplex_mode = map_earfcndl_to_duplex_mode(earfcndl)
-            subframe_assignment = None
-            special_subframe_pattern = None
-            if duplex_mode == DuplexMode.TDD:
-                subframe_assignment = enb_config.subframe_assignment
-                special_subframe_pattern = \
-                    enb_config.special_subframe_pattern
-        else:
-            raise ConfigurationError(
-                'Could not construct desired config '
-                'for eNB',
-            )
-    else:
-        pci = mconfig.pci
-        allow_enodeb_transmit = mconfig.allow_enodeb_transmit
-        tac = mconfig.tac
-        bandwidth_mhz = mconfig.bandwidth_mhz
-        cell_id = DEFAULT_CELL_IDENTITY
-        if mconfig.tdd_config is not None and str(mconfig.tdd_config) != '':
-            earfcndl = mconfig.tdd_config.earfcndl
-            subframe_assignment = mconfig.tdd_config.subframe_assignment
-            special_subframe_pattern = \
-                mconfig.tdd_config.special_subframe_pattern
-        elif mconfig.fdd_config is not None and str(mconfig.fdd_config) != '':
-            earfcndl = mconfig.fdd_config.earfcndl
-            subframe_assignment = None
-            special_subframe_pattern = None
-        else:
-            earfcndl = mconfig.earfcndl
-            subframe_assignment = mconfig.subframe_assignment
-            special_subframe_pattern = mconfig.special_subframe_pattern
 
-    # And now the rest of the fields
-    plmnid_list = mconfig.plmnid_list
+    # The eNodeB parameters to be generated with default value,
+    # It will load from eNB configs based on serial number or default value
+    # The params is a nested list which contains 2 format of parameter names.
+    # The first parameter is the name of eNB / ACS configuration in
+    #   magma_configs/serial_number/ and magma_configs/acs_common.yml
+    # The second parameter is the name of gateway configuration in 
+    #   override_configs/gateway.mconfig
+    params = [
+        ["earfcndl", "earfcndl"],
+        ["subframeAssignment", "subframe_assignment"],
+        ["special_subframe_pattern", "special_subframe_pattern"],
+        ["pci", "pci"],
+        ["plmnidList", "plmnid_list"],
+        ["tac", "tac"],
+        ["bandwidthMhz", "bandwidth_mhz"],
+        ["allowEnodebTransmit", "allow_enodeb_transmit"]
+    ]
+    
+    extend_params = ["cell_id", "mme_address", "mme_port"]
 
-    single_enodeb_config = SingleEnodebConfig(
-        earfcndl=earfcndl,
-        subframe_assignment=subframe_assignment,
-        special_subframe_pattern=special_subframe_pattern,
-        pci=pci,
-        plmnid_list=plmnid_list,
-        tac=tac,
-        bandwidth_mhz=bandwidth_mhz,
-        cell_id=cell_id,
-        allow_enodeb_transmit=allow_enodeb_transmit,
-        mme_address=None,
-        mme_port=None,
-    )
-    return single_enodeb_config
+    params_dict = dict()
+
+    common_config = load_common_config()
+    enb_configs = load_enb_config()
+    enb_serial = device_config.get_parameter(ParameterName.SERIAL_NUMBER)
+    enb_config = enb_configs.get(enb_serial, dict())
+
+    for param in params:
+        params_dict[param[1]] = enb_config.get(param[0], 
+            common_config.get(param[0], mconfig.__getattribute__(param[1]))
+        )
+
+    for param in extend_params:
+        params_dict[param] = enb_config.get(param, common_config.get(param, None))
+
+    return SingleEnodebConfig(**params_dict)
 
 
 def _set_pci(

@@ -14,26 +14,26 @@
 # log_level is set in mconfig. It can be overridden here
 
 tr069:
-  interface: en0 # NOTE: this value must be consistent with dnsmasq.conf
+  interface: eth0 # NOTE: this value must be consistent with dnsmasq.conf
   port: 48080
   perf_mgmt_port: 8081
   # NOTE: this is the IP which enodeb will communicate with enodebd
   #       if this is ever changed in dnsd.yml, this needs to be updated too
-  public_ip: 192.88.99.142
+  public_ip: 18.116.99.179
 
 # TODO: @amar: This is a temp workaround to allow for testing until we
 # connect enodebd with the domain proxy which is responsible for talking to
 # SAS.
 sas:
   sas_enabled: True
-  sas_server_url: "https://spectrum-connect.federatedwireless.com/v1.2/"
-  sas_uid: "INVALID_ID"
+  sas_server_url: "https://sas.goog/v1.2/"
+  sas_uid: "aether"
   sas_category: "A"
   sas_channel_type: "GAA"
-  sas_cert_subject: "INVALID_CERT_SUBJECT"
+  sas_cert_subject: "/C=TW/O=Sercomm/OU=WInnForum CBSD Certificate/CN=P27-SCE4255W:2009CW5000019"
   sas_icg_group_id: ""
   sas_location: "indoor"
-  sas_height_type: "AMSL"
+  sas_height_type: "AGL"
 
 # Reboot eNodeB if eNodeB should be connected to MME but isn't
 # This is a workaround for a bug with BaiCells eNodeB where the S1 connection

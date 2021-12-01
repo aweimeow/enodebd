@@ -157,7 +157,7 @@ class MconfigManagerImpl(MconfigManager[GatewayConfigs]):
                 mconfig_str = cfg_file.read()
             return self.deserialize_mconfig(mconfig_str)
         except (OSError, json.JSONDecodeError, json_format.ParseError) as e:
-            raise LoadConfigError('Error loading mconfig') from e
+            raise LoadConfigError('Error loading mconfig, mconfig may have format issue') from e
 
     def load_service_mconfig(
         self, service_name: str,

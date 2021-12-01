@@ -1,0 +1,29 @@
+bandwidthMhz: 100
+specialSubframePattern: 7
+earfcndl: 44490
+plmnidList: "305010"
+pci: 501
+allowEnodebTransmit: False
+subframeAssignment: 2
+tac: 2
+cell_id: 1
+mme_address: 172.21.143.206
+mme_port: 36412
+
+cell:
+  DL bandwidth: 100
+  UL bandwidth: 100
+  Admin state: 0
+  Periodic inform interval: 180
+  Perf mgmt enable: 0
+  Perf mgmt upload interval: 900
+
+sas:
+  sas_enabled: True
+  sas_server_url: "https://sas.goog/v1.2/"
+  sas_uid: "aether"
+  sas_category: "A"
+  sas_channel_type: "GAA"
+  sas_cert_subject: "/C=TW/O=Sercomm/OU=WInnForum CBSD Certificate/CN=P27-SCE4255W:2009CW5000019"
+  sas_location: "indoor"
+  sas_height_type: "AGL"

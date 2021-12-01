@@ -6,12 +6,11 @@
       "specialSubframePattern": 7,
       "earfcndl": 44490,
       "logLevel": "INFO",
-      "plmnidList": "00101",
+      "plmnidList": "305011",
       "pci": 260,
       "allowEnodebTransmit": false,
       "subframeAssignment": 2,
-      "tac": 1,
-      "enb_configs_by_serial": {"2009CW5000019": {}}
+      "tac": 1
     }
   }
 }

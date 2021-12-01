@@ -1,0 +1,11 @@
+bandwidthMhz: 100
+specialSubframePattern: 7
+earfcndl: 44490
+plmnidList: "00101"
+pci: 1
+allowEnodebTransmit: False
+subframeAssignment: 2
+tac: 1
+cell_id: 1
+mme_address: ""
+mme_port: 36412

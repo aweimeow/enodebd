@@ -91,11 +91,11 @@ class Tr069Soap11(Soap11):
         ctx.in_string = [in_string.encode(charset, 'ignore')]
         if ctx.in_string == [b'']:
             ctx.in_string = [
-                b'<soap11env:Envelope xmlns:cwmp="urn:dslforum-org:cwmp-1-0" xmlns:soap11env="http://schemas.xmlsoap.org/soap/envelope/">/n'
-                b'   <soap11env:Body>/n'
+                b'<soapenv:Envelope xmlns:cwmp="urn:dslforum-org:cwmp-1-0" xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">/n'
+                b'   <soapenv:Body>/n'
                 b'       <cwmp:EmptyHttp/>/n'
-                b'   </soap11env:Body>/n'
-                b'</soap11env:Envelope>',
+                b'   </soapenv:Body>/n'
+                b'</soapenv:Envelope>',
             ]
 
         super(Tr069Soap11, self).create_in_document(ctx, charset)

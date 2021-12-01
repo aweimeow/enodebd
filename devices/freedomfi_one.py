@@ -24,6 +24,7 @@ from data_models.data_model_parameters import (
     ParameterName,
     TrParameterType,
 )
+from configuration.service_configs import load_enb_config
 from device_config.configuration_init import build_desired_config
 from device_config.enodeb_config_postprocessor import EnodebConfigurationPostProcessor
 from device_config.enodeb_configuration import EnodebConfiguration
@@ -176,7 +177,9 @@ class StatusParameters:
     and converting it to Magma understood fields.
     """
 
-    STATUS_PATH = "Device.X_000E8F_DeviceFeature.X_000E8F_NEStatus."
+    DEFGW_STATUS_PATH = "Device.X_SCM_DeviceFeature.X_SCM_NEStatus.X_SCM_DEFGW_Status"
+    SAS_STATUS_PATH = "Device.Services.FAPService.1.FAPControl.LTE.X_SCM_SAS.State"
+    ENB_STATUS_PATH = "Device.X_SCM_DeviceFeature.X_SCM_NEStatus.X_SCM_eNB_Status"
 
     # Status parameters
     DEFAULT_GW = "defaultGW"
@@ -187,30 +190,29 @@ class StatusParameters:
 
     STATUS_PARAMETERS = {
         # Status nodes
+        # This works
         DEFAULT_GW: TrParam(
-            STATUS_PATH + "X_000E8F_DEFGW_Status",
+            DEFGW_STATUS_PATH,
             is_invasive=False,
             type=TrParameterType.STRING,
             is_optional=False,
         ),
-        SYNC_STATUS: TrParam(
-            STATUS_PATH + "X_000E8F_Sync_Status",
-            is_invasive=False,
-            type=TrParameterType.STRING,
-            is_optional=False,
-        ),
+        # SYNC_STATUS: TrParam(
+        #     STATUS_PATH + 'X_000E8F_Sync_Status', is_invasive=False,
+        #     type=TrParameterType.STRING, is_optional=False,
+        # ),
+        # This works
         SAS_STATUS: TrParam(
-            STATUS_PATH + "X_000E8F_SAS_Status",
+            SAS_STATUS_PATH,
             is_invasive=False,
             type=TrParameterType.STRING,
             is_optional=False,
         ),
-        ENB_STATUS: TrParam(
-            STATUS_PATH + "X_000E8F_eNB_Status",
-            is_invasive=False,
-            type=TrParameterType.STRING,
-            is_optional=False,
-        ),
+        # This doesn't work
+        # ENB_STATUS: TrParam(
+        #     ENB_STATUS_PATH, is_invasive=False,
+        #     type=TrParameterType.STRING, is_optional=False,
+        # ),
         # GPS status, lat, long
         GPS_SCAN_STATUS: TrParam(
             "Device.FAP.GPS.ScanStatus",
@@ -397,12 +399,11 @@ class FreedomFiOneMiscParameters:
     WEB_UI_ENABLE = "web_ui_enable"  # Enable or disable local enb UI
 
     MISC_PARAMETERS = {
-        WEB_UI_ENABLE: TrParam(
-            "Device.X_000E8F_DeviceFeature.X_000E8F_WebServerEnable",
-            is_invasive=False,
-            type=TrParameterType.BOOLEAN,
-            is_optional=False,
-        ),
+        # WEB_UI_ENABLE: TrParam(
+        #     'Device.X_000E8F_DeviceFeature.X_000E8F_WebServerEnable',
+        #     is_invasive=False,
+        #     type=TrParameterType.BOOLEAN, is_optional=False,
+        # ),
         CARRIER_AGG_ENABLE: TrParam(
             FAP_CONTROL + "LTE.X_000E8F_RRMConfig.X_000E8F_CA_Enable",
             is_invasive=False,
@@ -440,12 +441,11 @@ class FreedomFiOneMiscParameters:
         # Use IPV4 only
         TUNNEL_REF: "Device.IP.Interface.1.IPv4Address.1.",
         # Only synchronize with GPS
-        PRIM_SOURCE: "GNSS",
+        PRIM_SOURCE: "FREE_RUNNING",
         # Always enable carrier aggregation for the CBRS bands
-        CARRIER_AGG_ENABLE: True,
-        CARRIER_NUMBER: 2,  # CBRS has two carriers
+        CARRIER_AGG_ENABLE: False,
+        CARRIER_NUMBER: 1,  # CBRS has two carriers
         CONTIGUOUS_CC: 0,  # Its not contiguous carrier
-        WEB_UI_ENABLE: False,  # Disable WebUI by default
     }
 
 
@@ -657,12 +657,12 @@ class FreedomFiOneTrDataModel(DataModel):
             type=TrParameterType.INT,
             is_optional=False,
         ),
-        ParameterName.NUM_PLMNS: TrParam(
-            FAPSERVICE_PATH + "CellConfig.LTE.EPC.PLMNListNumberOfEntries",
-            is_invasive=False,
-            type=TrParameterType.INT,
-            is_optional=False,
-        ),
+        # It may not work, comment out first
+        # ParameterName.NUM_PLMNS: TrParam(
+        #     FAPSERVICE_PATH + 'CellConfig.LTE.EPC.PLMNListNumberOfEntries',
+        #     is_invasive=False,
+        #     type=TrParameterType.INT, is_optional=False,
+        # ),
         ParameterName.TAC: TrParam(
             FAPSERVICE_PATH + "CellConfig.LTE.EPC.TAC",
             is_invasive=False,
@@ -821,10 +821,7 @@ class FreedomFiOneConfigurationInitializer(EnodebConfigurationPostProcessor):
     def postprocess(
         self, mconfig: Any, service_cfg: Any, desired_cfg: EnodebConfiguration,
     ) -> None:
-        # TODO: Get this config from the domain proxy
-        # TODO @amarpad, set these when DProxy integration is done.
-        # For now the radio will directly talk to the SAS and get these
-        # attributes.
+
         desired_cfg.delete_parameter(ParameterName.EARFCNDL)
         desired_cfg.delete_parameter(ParameterName.DL_BANDWIDTH)
         desired_cfg.delete_parameter(ParameterName.UL_BANDWIDTH)
@@ -847,16 +844,19 @@ class FreedomFiOneConfigurationInitializer(EnodebConfigurationPostProcessor):
                 # This should not happen
                 EnodebdLogger.error("Serial number unknown for device")
 
-        if self.SAS_KEY not in service_cfg:
-            return
+        # Load eNB customized configuration from "./magma_config/serial_number/"
+        # and configure each connected eNB based on serial number
+        enbcfg = load_enb_config()
+        sn = self.acs.get_parameter(ParameterName.SERIAL_NUMBER)
 
-        sas_cfg = service_cfg[self.SAS_KEY]
-        sas_param_names = self.acs.data_model.get_sas_param_names()
-        for name, val in sas_cfg.items():
-            if name not in sas_param_names:
-                EnodebdLogger.warning("Ignoring attribute %s", name)
-                continue
-            desired_cfg.set_parameter(name, val)
+        for name, val in enbcfg.get(sn, {}).items():
+            # The SAS configuration for eNodeB
+            if name in ["sas", "cell"]:
+                for subname, subval in val.items():
+                    print("Config %s updated to: %s" % (subname, subval))
+                    desired_cfg.set_parameter(subname, subval)
+
+        print(desired_cfg)
 
 
 class FreedomFiOneSendGetTransientParametersState(EnodebAcsState):
@@ -872,12 +872,20 @@ class FreedomFiOneSendGetTransientParametersState(EnodebAcsState):
         self.done_transition = when_done
 
     def get_msg(self, message: Any) -> AcsMsgAndTransition:
+
         request = models.GetParameterValues()
         request.ParameterNames = models.ParameterNames()
         request.ParameterNames.string = []
+
+        # request = models.GetParameterNames()
+        # request.ParameterPath = "Device."
+        # request.NextLevel = False
+
+        # Get the status parameters which was defined in Line 171
         for _, tr_param in StatusParameters.STATUS_PARAMETERS.items():
             path = tr_param.path
             request.ParameterNames.string.append(path)
+
         request.ParameterNames.arrayType = "xsd:string[%d]" % len(
             request.ParameterNames.string
         )
@@ -1031,6 +1039,7 @@ class FreedomFiOneGetObjectParametersState(EnodebAcsState):
 
         # Parse simple params
         param_name_list = self.acs.data_model.get_parameter_names()
+
         for name in param_name_list:
             path = self.acs.data_model.get_parameter(name).path
             if path in path_to_val:
@@ -1056,6 +1065,7 @@ class FreedomFiOneGetObjectParametersState(EnodebAcsState):
                     self.acs.device_cfg.set_parameter_for_object(
                         name, magma_value, obj_name,
                     )
+
         # Now we have enough information to build the desired configuration
         if self.acs.desired_cfg is None:
             self.acs.desired_cfg = build_desired_config(

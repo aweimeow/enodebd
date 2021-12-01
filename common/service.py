@@ -326,6 +326,7 @@ class MagmaService(Service303Servicer):
                 'or mconfig, defaulting to INFO',
             )
             log_level = LogLevel.Value('INFO')
+
         self._set_log_level(log_level)
 
     @staticmethod

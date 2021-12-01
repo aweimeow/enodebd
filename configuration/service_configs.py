@@ -22,7 +22,8 @@ from configuration.exceptions import LoadConfigError
 # Location of configs (both service config and mconfig)
 CONFIG_DIR = './magma_configs'
 CONFIG_OVERRIDE_DIR = './override_configs'
-
+ENB_COMMON_FILE = './magma_configs/acs_common.yml'
+ENB_CONFIG_DIR = './magma_configs/serial_number'
 
 def load_override_config(service_name: str) -> Optional[Any]:
     """
@@ -73,7 +74,6 @@ def load_service_config(service_name: str) -> Any:
         LoadConfigError:
             Unable to load config due to missing file or missing key
     """
-    print(CONFIG_DIR, service_name)
     cfg_file_name = os.path.join(CONFIG_DIR, '%s.yml' % service_name)
     cfg = _load_yaml_file(cfg_file_name)
 
@@ -82,6 +82,36 @@ def load_service_config(service_name: str) -> Any:
         # Update the keys in the config if they are present in the override
         cfg.update(overrides)
     return cfg
+
+def load_enb_config() -> Any:
+    """
+    Load enb configurations from directory.
+
+    Args:
+        None
+
+    Returns: json-decoded value of the service config
+    """
+
+    ret = dict()
+    for fname in os.listdir(ENB_CONFIG_DIR):
+        sn = fname.replace(".yml", "")
+        cfg_file_name = os.path.join(ENB_CONFIG_DIR, fname)
+        ret[sn] = _load_yaml_file(cfg_file_name)
+
+    return ret
+
+def load_common_config() -> Any:
+    """
+    Load enb common configuration.
+
+    Args:
+        None
+
+    Returns: json-decoded value of the service config
+    """
+
+    return _load_yaml_file(ENB_COMMON_FILE)
 
 
 cached_service_configs = {}     # type: Dict[str, Any]

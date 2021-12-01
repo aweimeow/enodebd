@@ -148,6 +148,7 @@ class AutoConfigServer(ServiceBase):
                 # Allow un-set parameters. If CPE can't handle this, it will
                 # respond with an error message
                 pass
+
         return request_out
 
     # CPE->ACS RPC calls
@@ -327,6 +328,7 @@ def on_method_return_string(ctx):
     # would pick up all tags that start with the tag of interest (e.g
     # cwmp:SetParameterAttributes would also match
     # cwmp:SetParameterAttributesStruct)
+
     XML_FORMAT_STRS = [
         ["cwmp:%s>", "!!!TEMP_MOD!!!:%s>"],
         ["cwmp:%s/>", "!!!TEMP_MOD!!!:%s/>"],
@@ -363,7 +365,6 @@ def on_method_return_string(ctx):
     # per TR-069 spec.
     if(ctx.descriptor.out_message.Attributes.sub_name == 'EmptyHttp'):
         ctx.out_string = [b'']
-
 
 AutoConfigServer.event_manager.add_listener(
     'method_return_string',
