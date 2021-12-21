@@ -16,6 +16,7 @@ from typing import List
 from unittest import mock
 
 from lte.protos.mconfig import mconfigs_pb2
+from configuration.service_configs import load_service_config
 from common.sentry import sentry_init
 from common.service import MagmaService
 from enodeb_status import (
@@ -30,6 +31,7 @@ from enodebd_iptables_rules import set_enodebd_iptables_rule
 from rpc_servicer import EnodebdRpcServicer
 from stats_manager import StatsManager
 from tr069.server import tr069_server
+from prometheus_client import start_http_server as prometheus_start_http_server
 
 
 def get_context(ip: str):
@@ -46,6 +48,19 @@ def main():
     """
     service = MagmaService('enodebd', mconfigs_pb2.EnodebD())
     logger.init()
+
+    enodebd_cfg = load_service_config('enodebd')
+    prometheus_cfg = enodebd_cfg.get("prometheus", None)
+
+    if not prometheus_cfg:
+        logger.warning("Prometheus configuration wasn't found in enodebd configuration.")
+    else:
+        prometheus_ip = prometheus_cfg.get("ip")
+        prometheus_port = prometheus_cfg.get("port")
+        prometheus_start_http_server(prometheus_port, addr=prometheus_ip)
+        logger.info(
+            "Starting Prometheus server on address %s:%d",
+            prometheus_ip, prometheus_port)
 
     # Optionally pipe errors to Sentry
     sentry_init(service_name=service.name)

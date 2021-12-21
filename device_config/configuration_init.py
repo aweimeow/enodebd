@@ -91,6 +91,8 @@ def build_desired_config(
     enb_config = _get_enb_yang_config(device_config) or \
                  _get_enb_config(mconfig, device_config)
 
+    print(enb_config)
+
     _set_earfcn_freq_band_mode(
         device_config, cfg_desired, data_model,
         enb_config.earfcndl,
@@ -190,7 +192,6 @@ def _get_enb_config(
         mconfig: mconfigs_pb2.EnodebD,
         device_config: EnodebConfiguration,
 ) -> SingleEnodebConfig:
-
     # The eNodeB parameters to be generated with default value,
     # It will load from eNB configs based on serial number or default value
     # The params is a nested list which contains 2 format of parameter names.
@@ -237,8 +238,13 @@ def _set_pci(
     Set the following parameters:
      - PCI
     """
-    if pci not in range(0, 504 + 1):
+
+    if pci is int and pci not in range(0, 504 + 1):
         raise ConfigurationError('Invalid PCI (%d)' % pci)
+
+    if pci is str and any(map(lambda x: int(x) not in range(0, 504 + 1), pci.split(","))):
+        raise ConfigurationError('Invalid PCI (%s)' % pci)
+
     cfg.set_parameter(ParameterName.PCI, pci)
 
 

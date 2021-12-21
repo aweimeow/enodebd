@@ -48,6 +48,9 @@ from state_machines.enb_acs_states import (
     EndSessionState,
     EnodebAcsState,
     ErrorState,
+    DownloadState,
+    WaitDownloadResponseState,
+    WaitInformTransferCompleteState,
     GetParametersState,
     SetParameterValuesState,
     WaitGetParametersState,
@@ -59,111 +62,237 @@ from state_machines.enb_acs_states import (
 from tr069 import models
 
 
+FAPSERVICE_PATH = "Device.Services.FAPService.1."
+FAP_CONTROL = FAPSERVICE_PATH + "FAPControl."
+
+
+class FreedomFiOneHandler(BasicEnodebAcsStateMachine):
+    def __init__(self, service: MagmaService,) -> None:
+        self._state_map = {}
+        super().__init__(service=service, use_param_key=True)
+
+    def reboot_asap(self) -> None:
+        self.transition("reboot")
+
+    def is_enodeb_connected(self) -> bool:
+        return not isinstance(self.state, WaitInformState)
+
+    def _init_state_map(self) -> None:
+        self._state_map = {
+            # Inform comes in -> Respond with InformResponse
+            "wait_inform": WaitInformState(self, when_done="get_rpc_methods"),
+            # If first inform after boot -> GetRpc request comes in, if not
+            # empty request comes in => Transition to get_transient_params
+            "get_rpc_methods": FreedomFiOneGetInitState(
+                self, when_done="get_transient_params",
+            ),
+            # Read transient readonly params.
+            "get_transient_params": FreedomFiOneSendGetTransientParametersState(
+                self, when_upgrade="firmware_upgrade", when_done="get_params",
+            ),
+            "firmware_upgrade": DownloadState(self, when_done="wait_download_response"),
+            "wait_download_response": WaitDownloadResponseState(
+                self, when_done="wait_transfer_complete"
+            ),
+            "wait_transfer_complete": WaitInformTransferCompleteState(
+                self,
+                when_done="get_params",
+                when_periodic="wait_transfer_complete",
+                when_timeout="end_session",
+            ),
+            "get_params": FreedomFiOneGetObjectParametersState(
+                self,
+                when_delete="delete_objs",
+                when_add="add_objs",
+                when_set="set_params",
+                when_skip="end_session",
+            ),
+            "delete_objs": DeleteObjectsState(
+                self, when_add="add_objs", when_skip="set_params",
+            ),
+            "add_objs": AddObjectsState(self, when_done="set_params"),
+            "set_params": SetParameterValuesState(self, when_done="wait_set_params",),
+            "wait_set_params": WaitSetParameterValuesState(
+                self,
+                when_done="check_get_params",
+                when_apply_invasive="check_get_params",
+                status_non_zero_allowed=True,
+            ),
+            "check_get_params": GetParametersState(
+                self, when_done="check_wait_get_params", request_all_params=True,
+            ),
+            "check_wait_get_params": WaitGetParametersState(
+                self, when_done="end_session",
+            ),
+            "end_session": EndSessionState(self),
+            # These states are only entered through manual user intervention
+            "reboot": EnbSendRebootState(self, when_done="wait_reboot"),
+            "wait_reboot": WaitRebootResponseState(
+                self, when_done="wait_post_reboot_inform",
+            ),
+            "wait_post_reboot_inform": WaitInformMRebootState(
+                self, when_done="wait_empty", when_timeout="wait_inform",
+            ),
+            # The states below are entered when an unexpected message type is
+            # received
+            "unexpected_fault": ErrorState(
+                self, inform_transition_target="wait_inform",
+            ),
+        }
+
+    @property
+    def device_name(self) -> str:
+        return EnodebDeviceName.FREEDOMFI_ONE
+
+    @property
+    def data_model_class(self) -> Type[DataModel]:
+        return FreedomFiOneTrDataModel
+
+    @property
+    def config_postprocessor(self) -> EnodebConfigurationPostProcessor:
+        return FreedomFiOneConfigurationInitializer(self)
+
+    @property
+    def state_map(self) -> Dict[str, EnodebAcsState]:
+        return self._state_map
+
+    @property
+    def disconnected_state_name(self) -> str:
+        return "wait_inform"
+
+    @property
+    def unexpected_fault_state_name(self) -> str:
+        return "unexpected_fault"
+
+
 class SASParameters:
     """ Class modeling the SAS parameters and their TR path"""
 
-    # SAS parameters for FreedomFiOne
-    FAP_CONTROL = "Device.Services.FAPService.1.FAPControl."
-    FAPSERVICE_PATH = "Device.Services.FAPService.1."
-
-    # Sas management parameters
-    SAS_ENABLE = "sas_enabled"
-    SAS_SERVER_URL = "sas_server_url"
-    SAS_UID = "sas_uid"
-    SAS_CATEGORY = "sas_category"
-    SAS_CHANNEL_TYPE = "sas_channel_type"
-    SAS_CERT_SUBJECT = "sas_cert_subject"
-    SAS_IC_GROUP_ID = "sas_icg_group_id"
-    SAS_LOCATION = "sas_location"
-    SAS_HEIGHT_TYPE = "sas_height_type"
-    SAS_CPI_ENABLE = "sas_cpi_enable"
-    SAS_CPI_IPE = "sas_cpi_ipe"  # Install param supplied enable
-    FREQ_BAND_1 = "freq_band_1"
-    FREQ_BAND_2 = "freq_band_2"
     # For CBRS radios we set this to the limit and the SAS can reduce the
     # power if needed.
-    TX_POWER_CONFIG = "tx_power_config"
 
     SAS_PARAMETERS = {
-        SAS_ENABLE: TrParam(
-            FAP_CONTROL + "LTE.X_000E8F_SAS.Enable",
+        ParameterName.SAS_ENABLE: TrParam(
+            FAP_CONTROL + "LTE.X_SCM_SAS.Enable",
             is_invasive=False,
             type=TrParameterType.BOOLEAN,
             is_optional=False,
         ),
-        SAS_SERVER_URL: TrParam(
-            FAP_CONTROL + "LTE.X_000E8F_SAS.Server",
+        ParameterName.SAS_SERVER_URL: TrParam(
+            FAP_CONTROL + "LTE.X_SCM_SAS.Server",
             is_invasive=False,
             type=TrParameterType.STRING,
             is_optional=False,
         ),
-        SAS_UID: TrParam(
-            FAP_CONTROL + "LTE.X_000E8F_SAS.UserContactInformation",
+        ParameterName.SAS_UID: TrParam(
+            FAP_CONTROL + "LTE.X_SCM_SAS.UserContactInformation",
             is_invasive=False,
             type=TrParameterType.STRING,
             is_optional=False,
         ),
-        SAS_CATEGORY: TrParam(
-            FAP_CONTROL + "LTE.X_000E8F_SAS.Category",
+        ParameterName.SAS_CATEGORY: TrParam(
+            FAP_CONTROL + "LTE.X_SCM_SAS.Category",
             is_invasive=False,
             type=TrParameterType.STRING,
             is_optional=False,
         ),
-        SAS_CHANNEL_TYPE: TrParam(
-            FAP_CONTROL + "LTE.X_000E8F_SAS.ProtectionLevel",
+        ParameterName.SAS_CHANNEL_TYPE: TrParam(
+            FAP_CONTROL + "LTE.X_SCM_SAS.ProtectionLevel",
             is_invasive=False,
             type=TrParameterType.STRING,
             is_optional=False,
         ),
-        SAS_CERT_SUBJECT: TrParam(
-            FAP_CONTROL + "LTE.X_000E8F_SAS.CertSubject",
+        ParameterName.SAS_CERT_SUBJECT: TrParam(
+            FAP_CONTROL + "LTE.X_SCM_SAS.CertSubject",
             is_invasive=False,
             type=TrParameterType.STRING,
             is_optional=False,
         ),
         # SAS_IC_GROUP_ID: TrParam(
-        #     FAP_CONTROL + 'LTE.X_000E8F_SAS.ICGGroupId', is_invasive=False,
+        #     FAP_CONTROL + 'LTE.X_SCM_SAS.ICGGroupId', is_invasive=False,
         #     type=TrParameterType.STRING, False),
-        SAS_LOCATION: TrParam(
-            FAP_CONTROL + "LTE.X_000E8F_SAS.Location",
+        ParameterName.SAS_LOCATION: TrParam(
+            FAP_CONTROL + "LTE.X_SCM_SAS.Location",
             is_invasive=False,
             type=TrParameterType.STRING,
             is_optional=False,
         ),
-        SAS_HEIGHT_TYPE: TrParam(
-            FAP_CONTROL + "LTE.X_000E8F_SAS.HeightType",
+        ParameterName.SAS_HEIGHT_TYPE: TrParam(
+            FAP_CONTROL + "LTE.X_SCM_SAS.HeightType",
             is_invasive=False,
             type=TrParameterType.STRING,
             is_optional=False,
         ),
-        SAS_CPI_ENABLE: TrParam(
-            FAP_CONTROL + "LTE.X_000E8F_SAS.CPIEnable",
+        ParameterName.SAS_CPI_ENABLE: TrParam(
+            FAP_CONTROL + "LTE.X_SCM_SAS.CPIEnable",
             is_invasive=False,
             type=TrParameterType.BOOLEAN,
             is_optional=False,
         ),
-        SAS_CPI_IPE: TrParam(
-            FAP_CONTROL + "LTE.X_000E8F_SAS.CPIInstallParamSuppliedEnable",
+        ParameterName.SAS_CPI_IPE: TrParam(
+            FAP_CONTROL + "LTE.X_SCM_SAS.CPIInstallParamSuppliedEnable",
             is_invasive=False,
             type=TrParameterType.BOOLEAN,
             is_optional=False,
         ),
-        FREQ_BAND_1: TrParam(
-            FAPSERVICE_PATH + "CellConfig.LTE.RAN.RF.FreqBandIndicator",
+        ParameterName.SAS_FCCID: TrParam(
+            FAP_CONTROL + "LTE.X_SCM_SAS.FCCIdentificationNumber",
             is_invasive=False,
-            type=TrParameterType.UNSIGNED_INT,
+            type=TrParameterType.STRING,
             is_optional=False,
         ),
-        FREQ_BAND_2: TrParam(
-            FAPSERVICE_PATH + "CellConfig.LTE.RAN.RF.X_000E8F_FreqBandIndicator2",
+        ParameterName.SAS_MEAS_CAPS: TrParam(
+            FAP_CONTROL + "LTE.X_SCM_SAS.MeasCapability",
             is_invasive=False,
-            type=TrParameterType.UNSIGNED_INT,
+            type=TrParameterType.STRING,
             is_optional=False,
         ),
-        TX_POWER_CONFIG: TrParam(
-            FAPSERVICE_PATH + "CellConfig.LTE.RAN.RF.X_000E8F_TxPowerConfig",
-            is_invasive=True,
+        ParameterName.SAS_MANU_ENABLE: TrParam(
+            FAP_CONTROL + "LTE.X_SCM_SAS.ManufacturerPrefixEnable",
+            is_invasive=False,
+            type=TrParameterType.BOOLEAN,
+            is_optional=False,
+        ),
+        ParameterName.SAS_CPI_NAME: TrParam(
+            FAP_CONTROL + "LTE.X_SCM_SAS.CPIName",
+            is_invasive=False,
+            type=TrParameterType.STRING,
+            is_optional=False,
+        ),
+        ParameterName.SAS_CPI_ID: TrParam(
+            FAP_CONTROL + "LTE.X_SCM_SAS.CPIId",
+            is_invasive=False,
+            type=TrParameterType.STRING,
+            is_optional=False,
+        ),
+        ParameterName.SAS_ANTA_AZIMUTH: TrParam(
+            FAP_CONTROL + "LTE.X_SCM_SAS.AntennaAzimuth",
+            is_invasive=False,
             type=TrParameterType.INT,
+            is_optional=False,
+        ),
+        ParameterName.SAS_ANTA_DOWNTILT: TrParam(
+            FAP_CONTROL + "LTE.X_SCM_SAS.AntennaDowntilt",
+            is_invasive=False,
+            type=TrParameterType.INT,
+            is_optional=False,
+        ),
+        ParameterName.SAS_ANTA_GAIN: TrParam(
+            FAP_CONTROL + "LTE.X_SCM_SAS.AntennaGain",
+            is_invasive=False,
+            type=TrParameterType.INT,
+            is_optional=False,
+        ),
+        ParameterName.SAS_ANTA_BEAMWIDTH: TrParam(
+            FAP_CONTROL + "LTE.X_SCM_SAS.AntennaBeamwidth",
+            is_invasive=False,
+            type=TrParameterType.INT,
+            is_optional=False,
+        ),
+        ParameterName.SAS_CPI_DATA: TrParam(
+            FAP_CONTROL + "LTE.X_SCM_SAS.CPISignatureData",
+            is_invasive=False,
+            type=TrParameterType.STRING,
             is_optional=False,
         ),
     }
@@ -177,10 +306,6 @@ class StatusParameters:
     and converting it to Magma understood fields.
     """
 
-    DEFGW_STATUS_PATH = "Device.X_SCM_DeviceFeature.X_SCM_NEStatus.X_SCM_DEFGW_Status"
-    SAS_STATUS_PATH = "Device.Services.FAPService.1.FAPControl.LTE.X_SCM_SAS.State"
-    ENB_STATUS_PATH = "Device.X_SCM_DeviceFeature.X_SCM_NEStatus.X_SCM_eNB_Status"
-
     # Status parameters
     DEFAULT_GW = "defaultGW"
     SYNC_STATUS = "syncStatus"
@@ -190,30 +315,18 @@ class StatusParameters:
 
     STATUS_PARAMETERS = {
         # Status nodes
-        # This works
         DEFAULT_GW: TrParam(
-            DEFGW_STATUS_PATH,
+            "Device.X_SCM_DeviceFeature.X_SCM_NEStatus.X_SCM_DEFGW_Status",
             is_invasive=False,
             type=TrParameterType.STRING,
             is_optional=False,
         ),
-        # SYNC_STATUS: TrParam(
-        #     STATUS_PATH + 'X_000E8F_Sync_Status', is_invasive=False,
-        #     type=TrParameterType.STRING, is_optional=False,
-        # ),
-        # This works
         SAS_STATUS: TrParam(
-            SAS_STATUS_PATH,
+            "Device.Services.FAPService.1.FAPControl.LTE.X_SCM_SAS.State",
             is_invasive=False,
             type=TrParameterType.STRING,
             is_optional=False,
         ),
-        # This doesn't work
-        # ENB_STATUS: TrParam(
-        #     ENB_STATUS_PATH, is_invasive=False,
-        #     type=TrParameterType.STRING, is_optional=False,
-        # ),
-        # GPS status, lat, long
         GPS_SCAN_STATUS: TrParam(
             "Device.FAP.GPS.ScanStatus",
             is_invasive=False,
@@ -228,6 +341,18 @@ class StatusParameters:
         ),
         ParameterName.GPS_LONG: TrParam(
             "Device.FAP.GPS.LockedLongitude",
+            is_invasive=False,
+            type=TrParameterType.STRING,
+            is_optional=False,
+        ),
+        ParameterName.SW_VERSION: TrParam(
+            "Device.DeviceInfo.SoftwareVersion",
+            is_invasive=False,
+            type=TrParameterType.STRING,
+            is_optional=False,
+        ),
+        ParameterName.SERIAL_NUMBER: TrParam(
+            "Device.DeviceInfo.SerialNumber",
             is_invasive=False,
             type=TrParameterType.STRING,
             is_optional=False,
@@ -374,6 +499,8 @@ class StatusParameters:
             )
 
         pass_through_params = [ParameterName.GPS_LAT, ParameterName.GPS_LONG]
+
+        print(name_to_val)
         for name in pass_through_params:
             device_cfg.set_parameter(name, name_to_val[name])
 
@@ -384,158 +511,38 @@ class FreedomFiOneMiscParameters:
     miscellaneous properties
     """
 
-    FAP_CONTROL = "Device.Services.FAPService.1.FAPControl."
-    FAPSERVICE_PATH = "Device.Services.FAPService.1."
-
-    # Tunnel ref format clobber it to non IPSEC as we don't support
-    # IPSEC
-    TUNNEL_REF = "tunnel_ref"
-    PRIM_SOURCE = "prim_src"
-
-    # Carrier aggregation
-    CARRIER_AGG_ENABLE = "carrier_agg_enable"
-    CARRIER_NUMBER = "carrier_number"  # Carrier aggregation params
-    CONTIGUOUS_CC = "contiguous_cc"
-    WEB_UI_ENABLE = "web_ui_enable"  # Enable or disable local enb UI
-
     MISC_PARAMETERS = {
-        # WEB_UI_ENABLE: TrParam(
-        #     'Device.X_000E8F_DeviceFeature.X_000E8F_WebServerEnable',
-        #     is_invasive=False,
-        #     type=TrParameterType.BOOLEAN, is_optional=False,
-        # ),
-        CARRIER_AGG_ENABLE: TrParam(
-            FAP_CONTROL + "LTE.X_000E8F_RRMConfig.X_000E8F_CA_Enable",
+        ParameterName.CARRIER_AGG_ENABLE: TrParam(
+            FAP_CONTROL + "LTE.X_SCM_RRMConfig.X_SCM_CA_Enable",
             is_invasive=False,
             type=TrParameterType.BOOLEAN,
             is_optional=False,
         ),
-        CARRIER_NUMBER: TrParam(
-            FAP_CONTROL + "LTE.X_000E8F_RRMConfig.X_000E8F_Cell_Number",
+        ParameterName.CARRIER_NUMBER: TrParam(
+            FAP_CONTROL + "LTE.X_SCM_RRMConfig.X_SCM_Cell_Number",
             is_invasive=False,
             type=TrParameterType.INT,
             is_optional=False,
         ),
-        CONTIGUOUS_CC: TrParam(
-            FAP_CONTROL + "LTE.X_000E8F_RRMConfig.X_000E8F_CELL_Freq_Contiguous",
+        ParameterName.CONTIGUOUS_CC: TrParam(
+            FAP_CONTROL + "LTE.X_SCM_RRMConfig.X_SCM_CELL_Freq_Contiguous",
             is_invasive=False,
             type=TrParameterType.INT,
             is_optional=False,
         ),
-        TUNNEL_REF: TrParam(
-            FAPSERVICE_PATH + "CellConfig.LTE.Tunnel.1.TunnelRef",
+        ParameterName.PRIM_SOURCE: TrParam(
+            FAPSERVICE_PATH + "REM.X_SCM_tfcsManagerConfig.primSrc",
             is_invasive=False,
             type=TrParameterType.STRING,
             is_optional=False,
         ),
-        PRIM_SOURCE: TrParam(
-            FAPSERVICE_PATH + "REM.X_000E8F_tfcsManagerConfig.primSrc",
+        ParameterName.ENABLE_CWMP: TrParam(
+            "Device.ManagementServer.EnableCWMP",
             is_invasive=False,
-            type=TrParameterType.STRING,
+            type=TrParameterType.BOOLEAN,
             is_optional=False,
         ),
     }
-
-    # Hardcoded defaults
-    defaults = {
-        # Use IPV4 only
-        TUNNEL_REF: "Device.IP.Interface.1.IPv4Address.1.",
-        # Only synchronize with GPS
-        PRIM_SOURCE: "FREE_RUNNING",
-        # Always enable carrier aggregation for the CBRS bands
-        CARRIER_AGG_ENABLE: False,
-        CARRIER_NUMBER: 1,  # CBRS has two carriers
-        CONTIGUOUS_CC: 0,  # Its not contiguous carrier
-    }
-
-
-class FreedomFiOneHandler(BasicEnodebAcsStateMachine):
-    def __init__(self, service: MagmaService,) -> None:
-        self._state_map = {}
-        super().__init__(service=service, use_param_key=True)
-
-    def reboot_asap(self) -> None:
-        self.transition("reboot")
-
-    def is_enodeb_connected(self) -> bool:
-        return not isinstance(self.state, WaitInformState)
-
-    def _init_state_map(self) -> None:
-        self._state_map = {
-            # Inform comes in -> Respond with InformResponse
-            "wait_inform": WaitInformState(self, when_done="get_rpc_methods"),
-            # If first inform after boot -> GetRpc request comes in, if not
-            # empty request comes in => Transition to get_transient_params
-            "get_rpc_methods": FreedomFiOneGetInitState(
-                self, when_done="get_transient_params",
-            ),
-            # Read transient readonly params.
-            "get_transient_params": FreedomFiOneSendGetTransientParametersState(
-                self, when_done="get_params",
-            ),
-            "get_params": FreedomFiOneGetObjectParametersState(
-                self,
-                when_delete="delete_objs",
-                when_add="add_objs",
-                when_set="set_params",
-                when_skip="end_session",
-            ),
-            "delete_objs": DeleteObjectsState(
-                self, when_add="add_objs", when_skip="set_params",
-            ),
-            "add_objs": AddObjectsState(self, when_done="set_params"),
-            "set_params": SetParameterValuesState(self, when_done="wait_set_params",),
-            "wait_set_params": WaitSetParameterValuesState(
-                self,
-                when_done="check_get_params",
-                when_apply_invasive="check_get_params",
-                status_non_zero_allowed=True,
-            ),
-            "check_get_params": GetParametersState(
-                self, when_done="check_wait_get_params", request_all_params=True,
-            ),
-            "check_wait_get_params": WaitGetParametersState(
-                self, when_done="end_session",
-            ),
-            "end_session": EndSessionState(self),
-            # These states are only entered through manual user intervention
-            "reboot": EnbSendRebootState(self, when_done="wait_reboot"),
-            "wait_reboot": WaitRebootResponseState(
-                self, when_done="wait_post_reboot_inform",
-            ),
-            "wait_post_reboot_inform": WaitInformMRebootState(
-                self, when_done="wait_empty", when_timeout="wait_inform",
-            ),
-            # The states below are entered when an unexpected message type is
-            # received
-            "unexpected_fault": ErrorState(
-                self, inform_transition_target="wait_inform",
-            ),
-        }
-
-    @property
-    def device_name(self) -> str:
-        return EnodebDeviceName.FREEDOMFI_ONE
-
-    @property
-    def data_model_class(self) -> Type[DataModel]:
-        return FreedomFiOneTrDataModel
-
-    @property
-    def config_postprocessor(self) -> EnodebConfigurationPostProcessor:
-        return FreedomFiOneConfigurationInitializer(self)
-
-    @property
-    def state_map(self) -> Dict[str, EnodebAcsState]:
-        return self._state_map
-
-    @property
-    def disconnected_state_name(self) -> str:
-        return "wait_inform"
-
-    @property
-    def unexpected_fault_state_name(self) -> str:
-        return "unexpected_fault"
 
 
 class FreedomFiOneTrDataModel(DataModel):
@@ -555,16 +562,10 @@ class FreedomFiOneTrDataModel(DataModel):
     - Num PLMNs is not reported by these units
     """
 
-    # Mapping of TR parameter paths to aliases
-    DEVICE_PATH = "Device."
-    FAPSERVICE_PATH = DEVICE_PATH + "Services.FAPService.1."
-    FAP_CONTROL = FAPSERVICE_PATH + "FAPControl."
-    BCCH = FAPSERVICE_PATH + "REM.LTE.Cell.1.BCCH."
-
     PARAMETERS = {
         # Top-level objects
         ParameterName.DEVICE: TrParam(
-            DEVICE_PATH,
+            "Device.",
             is_invasive=False,
             type=TrParameterType.OBJECT,
             is_optional=False,
@@ -576,23 +577,65 @@ class FreedomFiOneTrDataModel(DataModel):
             is_optional=False,
         ),
         # Device info
-        ParameterName.SW_VERSION: TrParam(
-            DEVICE_PATH + "DeviceInfo.SoftwareVersion",
-            is_invasive=False,
-            type=TrParameterType.STRING,
-            is_optional=False,
-        ),
-        ParameterName.SERIAL_NUMBER: TrParam(
-            DEVICE_PATH + "DeviceInfo.SerialNumber",
+        ParameterName.IP_ADDRESS: TrParam(
+            "Device.IP.Interface.1.IPv4Address.1.IPAddress",
             is_invasive=False,
             type=TrParameterType.STRING,
             is_optional=False,
         ),
         # RF-related parameters
+        ParameterName.FREQ_BAND_1: TrParam(
+            FAPSERVICE_PATH + "CellConfig.LTE.RAN.RF.FreqBandIndicator",
+            is_invasive=False,
+            type=TrParameterType.UNSIGNED_INT,
+            is_optional=False,
+        ),
+        ParameterName.FREQ_BAND_2: TrParam(
+            FAPSERVICE_PATH + "CellConfig.LTE.RAN.RF.X_SCM_FreqBandIndicator2",
+            is_invasive=False,
+            type=TrParameterType.UNSIGNED_INT,
+            is_optional=False,
+        ),
+        ParameterName.FREQ_BAND_LIST: TrParam(
+            FAPSERVICE_PATH + "CellConfig.LTE.RAN.RF.X_SCM_FreqBandIndicatorConfigList",
+            is_invasive=False,
+            type=TrParameterType.STRING,
+            is_optional=False,
+        ),
         ParameterName.EARFCNDL: TrParam(
             FAPSERVICE_PATH + "CellConfig.LTE.RAN.RF.EARFCNDL",
             is_invasive=False,
             type=TrParameterType.INT,
+            is_optional=False,
+        ),
+        ParameterName.EARFCNUL: TrParam(
+            FAPSERVICE_PATH + "CellConfig.LTE.RAN.RF.EARFCNUL",
+            is_invasive=False,
+            type=TrParameterType.INT,
+            is_optional=False,
+        ),
+        ParameterName.EARFCNDL2: TrParam(
+            FAPSERVICE_PATH + "CellConfig.LTE.RAN.RF.X_SCM_EARFCNDL2",
+            is_invasive=False,
+            type=TrParameterType.INT,
+            is_optional=False,
+        ),
+        ParameterName.EARFCNUL2: TrParam(
+            FAPSERVICE_PATH + "CellConfig.LTE.RAN.RF.X_SCM_EARFCNUL2",
+            is_invasive=False,
+            type=TrParameterType.INT,
+            is_optional=False,
+        ),
+        ParameterName.EARFCNDL_LIST: TrParam(
+            FAPSERVICE_PATH + "CellConfig.LTE.RAN.RF.X_SCM_EARFCNDLConfigList",
+            is_invasive=False,
+            type=TrParameterType.STRING,
+            is_optional=False,
+        ),
+        ParameterName.EARFCNUL_LIST: TrParam(
+            FAPSERVICE_PATH + "CellConfig.LTE.RAN.RF.X_SCM_EARFCNULConfigList",
+            is_invasive=False,
+            type=TrParameterType.STRING,
             is_optional=False,
         ),
         ParameterName.DL_BANDWIDTH: TrParam(
@@ -639,7 +682,7 @@ class FreedomFiOneTrDataModel(DataModel):
             is_optional=False,
         ),
         ParameterName.GPS_ENABLE: TrParam(
-            DEVICE_PATH + "FAP.GPS.ScanOnBoot",
+            "Device.FAP.GPS.ScanOnBoot",
             is_invasive=False,
             type=TrParameterType.BOOLEAN,
             is_optional=False,
@@ -657,46 +700,58 @@ class FreedomFiOneTrDataModel(DataModel):
             type=TrParameterType.INT,
             is_optional=False,
         ),
-        # It may not work, comment out first
-        # ParameterName.NUM_PLMNS: TrParam(
-        #     FAPSERVICE_PATH + 'CellConfig.LTE.EPC.PLMNListNumberOfEntries',
-        #     is_invasive=False,
-        #     type=TrParameterType.INT, is_optional=False,
-        # ),
         ParameterName.TAC: TrParam(
             FAPSERVICE_PATH + "CellConfig.LTE.EPC.TAC",
             is_invasive=False,
             type=TrParameterType.INT,
             is_optional=False,
         ),
+        ParameterName.TAC2: TrParam(
+            FAPSERVICE_PATH + "CellConfig.LTE.EPC.X_SCM_TAC2",
+            is_invasive=False,
+            type=TrParameterType.INT,
+            is_optional=False,
+        ),
         # Management server parameters
         ParameterName.PERIODIC_INFORM_ENABLE: TrParam(
-            DEVICE_PATH + "ManagementServer.PeriodicInformEnable",
+            "Device.ManagementServer.PeriodicInformEnable",
             is_invasive=False,
             type=TrParameterType.BOOLEAN,
             is_optional=False,
         ),
         ParameterName.PERIODIC_INFORM_INTERVAL: TrParam(
-            DEVICE_PATH + "ManagementServer.PeriodicInformInterval",
+            "Device.ManagementServer.PeriodicInformInterval",
             is_invasive=False,
             type=TrParameterType.INT,
             is_optional=False,
         ),
         # Performance management parameters
         ParameterName.PERF_MGMT_ENABLE: TrParam(
-            DEVICE_PATH + "FAP.PerfMgmt.Config.1.Enable",
+            "Device.FAP.PerfMgmt.Config.1.Enable",
             is_invasive=False,
             type=TrParameterType.BOOLEAN,
             is_optional=False,
         ),
         ParameterName.PERF_MGMT_UPLOAD_INTERVAL: TrParam(
-            DEVICE_PATH + "FAP.PerfMgmt.Config.1.PeriodicUploadInterval",
+            "Device.FAP.PerfMgmt.Config.1.PeriodicUploadInterval",
             is_invasive=False,
             type=TrParameterType.INT,
             is_optional=False,
         ),
         ParameterName.PERF_MGMT_UPLOAD_URL: TrParam(
-            DEVICE_PATH + "FAP.PerfMgmt.Config.1.URL",
+            "Device.FAP.PerfMgmt.Config.1.URL",
+            is_invasive=False,
+            type=TrParameterType.STRING,
+            is_optional=False,
+        ),
+        ParameterName.TX_POWER: TrParam(
+            FAPSERVICE_PATH + "CellConfig.LTE.RAN.RF.X_SCM_TxPowerConfig",
+            is_invasive=True,
+            type=TrParameterType.INT,
+            is_optional=False,
+        ),
+        ParameterName.TUNNEL_TYPE: TrParam(
+            FAPSERVICE_PATH + "CellConfig.LTE.Tunnel.1.TunnelRef",
             is_invasive=False,
             type=TrParameterType.STRING,
             is_optional=False,
@@ -740,7 +795,6 @@ class FreedomFiOneTrDataModel(DataModel):
     PARAMETERS.update(SASParameters.SAS_PARAMETERS)
     PARAMETERS.update(FreedomFiOneMiscParameters.MISC_PARAMETERS)
     PARAMETERS.update(StatusParameters.STATUS_PARAMETERS)
-    # These are stateful parameters that have no tr-69 representation
     PARAMETERS.update(StatusParameters.DERIVED_STATUS_PARAMETERS)
 
     TRANSFORMS_FOR_MAGMA = {
@@ -812,7 +866,6 @@ class FreedomFiOneConfigurationInitializer(EnodebConfigurationPostProcessor):
     """
 
     SAS_KEY = "sas"
-    WEB_UI_ENABLE_LIST_KEY = "web_ui_enable_list"
 
     def __init__(self, acs: EnodebAcsStateMachine):
         super().__init__()
@@ -821,28 +874,8 @@ class FreedomFiOneConfigurationInitializer(EnodebConfigurationPostProcessor):
     def postprocess(
         self, mconfig: Any, service_cfg: Any, desired_cfg: EnodebConfiguration,
     ) -> None:
-
-        desired_cfg.delete_parameter(ParameterName.EARFCNDL)
-        desired_cfg.delete_parameter(ParameterName.DL_BANDWIDTH)
-        desired_cfg.delete_parameter(ParameterName.UL_BANDWIDTH)
-
-        # go through misc parameters and set them to default.
-        for name, val in FreedomFiOneMiscParameters.defaults.items():
-            desired_cfg.set_parameter(name, val)
-
         # Bump up the parameter key version
         self.acs.parameter_version_inc()
-
-        if self.WEB_UI_ENABLE_LIST_KEY in service_cfg:
-            serial_nos = service_cfg.get(self.WEB_UI_ENABLE_LIST_KEY)
-            if self.acs.device_cfg.has_parameter(ParameterName.SERIAL_NUMBER,):
-                if self.acs.get_parameter(ParameterName.SERIAL_NUMBER) in serial_nos:
-                    desired_cfg.set_parameter(
-                        FreedomFiOneMiscParameters.WEB_UI_ENABLE, True,
-                    )
-            else:
-                # This should not happen
-                EnodebdLogger.error("Serial number unknown for device")
 
         # Load eNB customized configuration from "./magma_config/serial_number/"
         # and configure each connected eNB based on serial number
@@ -866,9 +899,10 @@ class FreedomFiOneSendGetTransientParametersState(EnodebAcsState):
     Some eNB parameters are read only and updated by the eNB itself.
     """
 
-    def __init__(self, acs: EnodebAcsStateMachine, when_done: str):
+    def __init__(self, acs: EnodebAcsStateMachine, when_upgrade: str, when_done: str):
         super().__init__()
         self.acs = acs
+        self.upgrade_transition = when_upgrade
         self.done_transition = when_done
 
     def get_msg(self, message: Any) -> AcsMsgAndTransition:
@@ -877,11 +911,6 @@ class FreedomFiOneSendGetTransientParametersState(EnodebAcsState):
         request.ParameterNames = models.ParameterNames()
         request.ParameterNames.string = []
 
-        # request = models.GetParameterNames()
-        # request.ParameterPath = "Device."
-        # request.NextLevel = False
-
-        # Get the status parameters which was defined in Line 171
         for _, tr_param in StatusParameters.STATUS_PARAMETERS.items():
             path = tr_param.path
             request.ParameterNames.string.append(path)
@@ -905,7 +934,15 @@ class FreedomFiOneSendGetTransientParametersState(EnodebAcsState):
             name_to_val, self.acs.device_cfg,
         )
 
-        return AcsReadMsgResult(msg_handled=True, next_state=self.done_transition,)
+        print("In get transient state", name_to_val, type(name_to_val))
+        if name_to_val["SW version"] != "TEST3918@210224":
+            print("Get into Firmware Upgrade state")
+            return AcsReadMsgResult(
+                msg_handled=True, next_state=self.upgrade_transition
+            )
+
+        print("Skip firmware upgrade, configure the enb")
+        return AcsReadMsgResult(msg_handled=True, next_state=self.done_transition)
 
     def state_description(self) -> str:
         return "Getting transient read-only parameters"
@@ -1005,6 +1042,8 @@ class FreedomFiOneGetObjectParametersState(EnodebAcsState):
             obj_name = ParameterName.PLMN_N % i
             desired = obj_to_params[obj_name]
             names += desired
+
+        print(obj_to_params)
         return names
 
     def get_msg(self, message: Any) -> AcsMsgAndTransition:

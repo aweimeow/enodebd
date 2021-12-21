@@ -13,6 +13,10 @@
 #
 # log_level is set in mconfig. It can be overridden here
 
+prometheus:
+  ip: 0.0.0.0
+  port: 8000
+
 tr069:
   interface: eth0 # NOTE: this value must be consistent with dnsmasq.conf
   port: 48080
@@ -20,6 +24,10 @@ tr069:
   # NOTE: this is the IP which enodeb will communicate with enodebd
   #       if this is ever changed in dnsd.yml, this needs to be updated too
   public_ip: 18.116.99.179
+
+ssl:
+  key: "./enodebd.key"
+  cert: "./enodebd.cert"
 
 # TODO: @amar: This is a temp workaround to allow for testing until we
 # connect enodebd with the domain proxy which is responsible for talking to
@@ -46,4 +54,3 @@ web_ui_enable_list: []
 
 # Network interface to terminate S1
 s1_interface: eth1
-

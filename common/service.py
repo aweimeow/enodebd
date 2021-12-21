@@ -230,6 +230,7 @@ class MagmaService(Service303Servicer):
         is received or a StopService rpc call is made on the Service303
         interface.
         """
+
         logging.info("Starting %s...", self._name)
         (host, port) = ServiceRegistry.get_service_address(self._name)
         self._port = self._server.add_insecure_port('{}:{}'.format(host, port))

@@ -1,7 +1,11 @@
 lte/
 orc8r/
+prometheus.yml
 metrics_pb2.py
 metrics_pb2_grpc.py
+
+### Log ###
+*.log
 
 ### Python ###
 # Byte-compiled / optimized / DLL files

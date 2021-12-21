@@ -148,6 +148,7 @@ class BasicEnodebAcsStateMachine(EnodebAcsStateMachine):
         """ Process incoming message and maybe transition state """
         self._reset_timeout()
         msg_handled, next_state = self.state.read_msg(message)
+        logger.info("Received incoming message, transfer to new state: %s", next_state)
         if not msg_handled:
             self._transition_for_unexpected_msg(message)
             _msg_handled, next_state = self.state.read_msg(message)
@@ -157,7 +158,9 @@ class BasicEnodebAcsStateMachine(EnodebAcsStateMachine):
     def _get_tr069_msg(self, message: Any) -> Any:
         """ Get a new message to send, and maybe transition state """
         msg_and_transition = self.state.get_msg(message)
+        logger.debug("Sending a new message to eNodeB")
         if msg_and_transition.next_state:
+            logger.info("Transfer to new state: %s", msg_and_transition.next_state)
             self.transition(msg_and_transition.next_state)
         msg = msg_and_transition.msg
         return msg

@@ -20,6 +20,25 @@ from cryptography.x509.oid import NameOID
 from common.serialization_utils import write_to_file_atomically
 
 
+def load_key_bytes(key_file):
+    """Load a private key encoded in PEM format
+
+    Args:
+        key_file: path to the key file
+
+    Returns:
+        Bytes
+
+    Raises:
+        IOError: If file cannot be opened
+        ValueError: If the file content cannot be decoded successfully
+        TypeError: If the key_file is encrypted
+    """
+    with open(key_file, 'rb') as f:
+        key_bytes = f.read()
+
+    return key_bytes
+
 def load_key(key_file):
     """Load a private key encoded in PEM format
 
@@ -128,6 +147,23 @@ def create_csr(
 
     return csr
 
+def load_cert_bytes(cert_file):
+    """Load certificate from a file
+
+    Args:
+        cert_file: path to file storing the cert in PEM format
+
+    Returns:
+        cert: an instance of x509.Certificate
+
+    Raises:
+        IOError: If file cannot be opened
+        ValueError: If the file content cannot be decoded successfully
+    """
+    with open(cert_file, 'rb') as f:
+        cert_pem = f.read()
+
+    return cert_pem
 
 def load_cert(cert_file):
     """Load certificate from a file

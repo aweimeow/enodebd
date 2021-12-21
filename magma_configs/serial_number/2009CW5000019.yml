@@ -2,10 +2,9 @@ bandwidthMhz: 100
 specialSubframePattern: 7
 earfcndl: 44490
 plmnidList: "305010"
-pci: 501
+pci: "100,101"
 allowEnodebTransmit: False
 subframeAssignment: 2
-tac: 2
 cell_id: 1
 mme_address: 172.21.143.206
 mme_port: 36412
@@ -17,9 +16,31 @@ cell:
   Periodic inform interval: 180
   Perf mgmt enable: 0
   Perf mgmt upload interval: 900
+  enable_cwmp: True
+  tac: 501
+  tac2: 501
+  # RRM / CA
+  earfcndl1: 55440
+  earfcnul1: 55440
+  earfcndl2: 55640
+  earfcnul2: 55640
+  earfcndl_list: "55440,55640"
+  earfcnul_list: "55440,55640"
+  carrier_agg_enable: False
+  carrier_number: 2
+  contiguous_cc: 0
+  prim_source: "FREE_RUNNING"
+  # RF
+  freq_band_1: 48
+  freq_band_2: 48
+  freq_band_list: "48,48"
+  tx_power: 20
+  tunnel_type: "Device.IP.Interface.1.IPv4Address.1."
 
 sas:
   sas_enabled: True
+  sas_cpi_enable: True
+  sas_manufacturer_prefix_enable: True
   sas_server_url: "https://sas.goog/v1.2/"
   sas_uid: "aether"
   sas_category: "A"
@@ -27,3 +48,13 @@ sas:
   sas_cert_subject: "/C=TW/O=Sercomm/OU=WInnForum CBSD Certificate/CN=P27-SCE4255W:2009CW5000019"
   sas_location: "indoor"
   sas_height_type: "AGL"
+  sas_fccid: "P27-SCE4255W"
+  sas_measure_capability: "RECEIVED_POWER_WITHOUT_GRANT"
+  sas_cpi_name: "onf-cpi"
+  sas_cpi_id: "GOOG-999999"
+
+  sas_antenna_azimuth: 0
+  sas_antenna_downtilt: 0
+  sas_antenna_gain: 5
+  sas_antenna_beamwidth: 360
+  sas_cpi_signature_data: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJmY2NJZCI6IlAyNy1TQ0U0MjU1VyIsImNic2RTZXJpYWxOdW1iZXIiOiJTZXJjb21tLTIwMDlDVzUwMDAwMTkiLCJpbnN0YWxsYXRpb25QYXJhbSI6eyJsYXRpdHVkZSI6MzIuMzQ0NzUyLCJsb25naXR1ZGUiOi0xMTEuMDEyMzAyLCJoZWlnaHQiOjEsImhlaWdodFR5cGUiOiJBR0wiLCJpbmRvb3JEZXBsb3ltZW50Ijp0cnVlLCJhbnRlbm5hQXppbXV0aCI6MCwiYW50ZW5uYURvd250aWx0IjowLCJhbnRlbm5hR2FpbiI6NSwiYW50ZW5uYUJlYW13aWR0aCI6MzYwLCJob3Jpem9udGFsQWNjdXJhY3kiOjMsInZlcnRpY2FsQWNjdXJhY3kiOjMsImVpcnBDYXBhYmlsaXR5IjoyOH0sInByb2Zlc3Npb25hbEluc3RhbGxlckRhdGEiOnsiY3BpSWQiOiJHT09HLTAwMTIxMiIsImNwaU5hbWUiOiJXZWktWXUgQ2hlbiIsImluc3RhbGxDZXJ0aWZpY2F0aW9uVGltZSI6IjIwMjEtMDktMDlUMDA6MDA6MDBaIn19.ljSE95LcLwKXDgrFIX43M4BUTfmkl62KQvt0TNnsZh2SUgpw0ALQCEuSzh7KHRPOvVT5F8JjsKQeeewXSrHSLXPuPwCcxwYGDrwAp_SMiXJu7-ihL-ww_qOsZ-nu1W8alMe8oyxFiEYDN0957PBr9YP-Mj8uptVJ9VKJjf1bawzx0wihwXhTtioNMmvEO_zltD83BK14kaLM0aAcstgjHjNT7tIBE-0O3QGuN8o7jdGHxy9y7FUCPSmih2B5iu2ygVALGzYglnFebK873pp3mjKPh7XO776OjkNgYHHk5uCqf4JOf03z39Cn-CQVSnZTx-1LHV-mYJnhF4yk2R_chg"

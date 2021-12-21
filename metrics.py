@@ -54,6 +54,10 @@ STAT_ENODEB_REBOOTS = Counter(
     'enodeb_reboots',
     'ENodeB reboots by enodebd', ['cause'],
 )
+STAT_ENODEB_LAST_CONFIGURED = Gauge(
+    'enodeb_last_configured',
+    'Information of configured eNodeB', ['serial_number', 'ip_address', 'gps_lat', 'gps_lon']
+)
 
 # Metrics that are accumulated by eNodeB. Use gauges to avoid 'double-counting',
 # since eNodeB does accumulation.
