@@ -1,0 +1,16 @@
+{
+  "configs_by_key": {
+    "enodebd": {
+      "@type": "type.googleapis.com/magma.mconfig.EnodebD",
+      "bandwidthMhz": 20,
+      "specialSubframePattern": 7,
+      "earfcndl": 44490,
+      "logLevel": "INFO",
+      "plmnidList": "305011",
+      "pci": 260,
+      "allowEnodebTransmit": false,
+      "subframeAssignment": 2,
+      "tac": 1
+    }
+  }
+}
