@@ -1,0 +1,29 @@
+// SPDX-FileCopyrightText: 2020 The Magma Authors.
+// SPDX-FileCopyrightText: 2022 Open Networking Foundation <support@opennetworking.org>
+//
+// SPDX-License-Identifier: BSD-3-Clause
+
+syntax = "proto3";
+
+package magma.lte;
+
+option go_package = "magma/lte/cloud/go/protos";
+
+enum EnbOffloadType {
+    ALL = 0;
+    ANY = 1;
+    ANY_CONNECTED = 2;
+    ANY_IDLE = 3;
+}
+
+message StartAgwOffloadRequest {
+    uint32 enb_id = 1;
+    EnbOffloadType enb_offload_type = 2;
+    string imsi = 3;
+}
+
+message StartAgwOffloadResponse {}
+
+service HaService {
+    rpc StartAgwOffload (StartAgwOffloadRequest) returns (StartAgwOffloadResponse) {}
+}

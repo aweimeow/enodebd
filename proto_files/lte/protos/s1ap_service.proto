@@ -1,0 +1,22 @@
+// SPDX-FileCopyrightText: 2020 The Magma Authors.
+// SPDX-FileCopyrightText: 2022 Open Networking Foundation <support@opennetworking.org>
+//
+// SPDX-License-Identifier: BSD-3-Clause
+
+syntax = "proto3";
+
+import "orc8r/protos/common.proto";
+
+package magma.lte;
+
+option go_package = "magma/lte/cloud/go/protos";
+
+service S1apService {
+    // Returns state of the S1 connected eNBs
+    rpc GetENBState (magma.orc8r.Void) returns (EnbStateResult) {}
+}
+
+// enb_state_map { eNB IDs -> # UEs connected }
+message EnbStateResult {
+    map<uint32, uint32> enb_state_map = 1;
+}

@@ -1,15 +1,7 @@
-"""
-Copyright 2020 The Magma Authors.
-
-This source code is licensed under the BSD-style license found in the
-LICENSE file in the root directory of this source tree.
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-"""
+# SPDX-FileCopyrightText: 2020 The Magma Authors.
+# SPDX-FileCopyrightText: 2022 Open Networking Foundation <support@opennetworking.org>
+#
+# SPDX-License-Identifier: BSD-3-Clause
 
 from typing import Any, List, Optional
 
@@ -62,6 +54,7 @@ class StateMachineManager:
                 return models.DummyInput()
 
         handler = self._get_handler(client_ip)
+
         if handler is None:
             logger.warning(
                 'Received non-Inform TR-069 message from unknown '
@@ -195,7 +188,12 @@ class StateMachineManager:
 
     @staticmethod
     def _get_client_ip(ctx: WsgiMethodContext) -> str:
-        return ctx.transport.req_env.get("REMOTE_ADDR", "unknown")
+
+        client_ip = ctx.transport.req_env.get("HTTP_X_REAL_IP", 
+            ctx.transport.req_env.get("REMOTE_ADDR", "unknown")
+        )
+
+        return client_ip
 
     def _build_handler(
         self,

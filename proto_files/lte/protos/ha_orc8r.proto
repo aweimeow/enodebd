@@ -1,0 +1,28 @@
+// SPDX-FileCopyrightText: 2020 The Magma Authors.
+// SPDX-FileCopyrightText: 2022 Open Networking Foundation <support@opennetworking.org>
+//
+// SPDX-License-Identifier: BSD-3-Clause
+
+syntax = "proto3";
+
+package magma.lte;
+option go_package = "magma/lte/cloud/go/protos";
+
+message GetEnodebOffloadStateRequest {
+}
+
+message GetEnodebOffloadStateResponse {
+    enum EnodebOffloadState {
+      NO_OP = 0;
+      PRIMARY_CONNECTED = 1;
+      PRIMARY_CONNECTED_AND_SERVING_UES = 2;
+    }
+    // Map from ENB ID to offload state
+    map<uint32, EnodebOffloadState> enodeb_offload_states = 1;
+}
+
+// ha-cloud service definition
+service Ha {
+    // Fetch all ENB state for ENBs served within the pools of the calling AGW
+    rpc GetEnodebOffloadState(GetEnodebOffloadStateRequest) returns (GetEnodebOffloadStateResponse) {}
+}

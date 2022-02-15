@@ -1,0 +1,30 @@
+// SPDX-FileCopyrightText: 2020 The Magma Authors.
+// SPDX-FileCopyrightText: 2022 Open Networking Foundation <support@opennetworking.org>
+//
+// SPDX-License-Identifier: BSD-3-Clause
+
+syntax = "proto3";
+
+package magma.lte;
+option go_package = "magma/lte/cloud/go/protos";
+
+message AbortSessionRequest {
+    string session_id = 1;
+    string user_name = 2; // IMSI
+}
+
+message AbortSessionResult {
+    enum Code {
+        SESSION_REMOVED = 0;
+        SESSION_NOT_FOUND = 1;
+        USER_NOT_FOUND = 2;
+        GATEWAY_NOT_FOUND = 3;
+        RADIUS_SERVER_ERROR = 4;
+    }
+    Code code = 1;
+    string error_message = 2;
+}
+
+service AbortSessionResponder {
+    rpc AbortSession(AbortSessionRequest) returns (AbortSessionResult) {}
+}

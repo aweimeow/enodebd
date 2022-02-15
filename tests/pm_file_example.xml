@@ -1,4 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+SPDX-FileCopyrightText: 2020 The Magma Authors.
+SPDX-FileCopyrightText: 2022 Open Networking Foundation <support@opennetworking.org>
+
+SPDX-License-Identifier: BSD-3-Clause
+-->
+
 <PmFile xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="PmFileFormat.xsd">
  <FileHeader>
   <InfoModelReferenced>NanoCell-eNB-PM-V2.5.0</InfoModelReferenced>

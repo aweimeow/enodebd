@@ -1,0 +1,44 @@
+// SPDX-FileCopyrightText: 2020 The Magma Authors.
+// SPDX-FileCopyrightText: 2022 Open Networking Foundation <support@opennetworking.org>
+//
+// SPDX-License-Identifier: BSD-3-Clause
+
+syntax = "proto3";
+
+package magma.orc8r;
+option go_package = "magma/orc8r/lib/go/protos";
+
+message Void {
+}
+
+// -------------------------------------------------------------------------------
+// Bytes is a special message type used to marshal & unmarshal unknown types as is
+// -------------------------------------------------------------------------------
+message Bytes {
+  bytes val = 1;
+}
+
+// --------------------------------------------------------------------------
+// NetworkID uniquely identifies the network
+// --------------------------------------------------------------------------
+message NetworkID {
+  string id = 1;
+}
+
+// --------------------------------------------------------------------------
+// IDList is a generic definition of an array of IDs (network, gateway, etc.)
+// --------------------------------------------------------------------------
+message IDList {
+  repeated string ids = 1;
+}
+
+// --------------------------------------------------------------------------
+// Logging levels
+// --------------------------------------------------------------------------
+enum LogLevel {
+  DEBUG = 0;
+  INFO = 1;
+  WARNING = 2;
+  ERROR = 3;
+  FATAL = 4;
+}

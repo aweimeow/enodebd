@@ -1,0 +1,55 @@
+// SPDX-FileCopyrightText: 2020 The Magma Authors.
+// SPDX-FileCopyrightText: 2022 Open Networking Foundation <support@opennetworking.org>
+//
+// SPDX-License-Identifier: BSD-3-Clause
+
+syntax = "proto3";
+
+import "lte/protos/subscriberdb.proto";
+import "lte/protos/mobilityd.proto";
+
+package magma.lte;
+option go_package = "magma/lte/cloud/go/protos";
+
+// --------------------------------------------------------------------------
+// [mobilityd] List of assigned IP blocks
+// --------------------------------------------------------------------------
+message AssignedIPBlocks {
+  repeated IPBlock ip_block_list = 1;
+}
+
+// --------------------------------------------------------------------------
+// [mobilityd] IP descriptor (IP desc) describing an assigned IP
+// --------------------------------------------------------------------------
+message IPDesc {
+
+  // IPs can be in 1 of 4 states during their lifecycle; see
+  // mobilityd.ip_allocator for full description
+  enum IPState {
+    FREE = 0;
+    ALLOCATED = 1;
+    RELEASED = 2;
+    REAPED = 3;
+    RESERVED = 4;
+  }
+
+  enum IPType {
+    STATIC = 0;
+    IP_POOL = 1;
+    DHCP = 3;
+  }
+
+  IPAddress ip = 1;
+  IPBlock ip_block = 2;
+  IPState state = 3;
+  SubscriberID sid = 4;
+  IPType type = 5;
+  uint32 vlan_id = 6;
+}
+
+// --------------------------------------------------------------------------
+// [mobilityd] List of IP descriptors
+// --------------------------------------------------------------------------
+message IPDescs {
+  repeated IPDesc ip_descs = 1;
+}
