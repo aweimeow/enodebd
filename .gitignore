@@ -13,3 +13,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Virtual Environment
+venv/
+
+### enodebd ###
+magma_configs/serial_number/
+!magma_configs/serial_number/example.yml

@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2022 Open Networking Foundation <support@opennetworking.org>>
+
+SPDX-License-Identifier: BSD-3-Clause
+-->
+
 # ENODEBD
 
 eNodeB daemon is an Automatic Configuration Server (ACS) which forks from [Facebook Magma project](https://github.com/magma/magma). It currently tested with Sercomm eNodeB P27-SCE4255W small cell.

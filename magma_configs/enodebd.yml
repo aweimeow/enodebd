@@ -1,15 +1,8 @@
----
+# SPDX-FileCopyrightText: 2020 The Magma Authors.
+# SPDX-FileCopyrightText: 2022 Open Networking Foundation <support@opennetworking.org>
 #
-# Copyright 2020 The Magma Authors.
+# SPDX-License-Identifier: BSD-3-Clause
 
-# This source code is licensed under the BSD-style license found in the
-# LICENSE file in the root directory of this source tree.
-
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 #
 # log_level is set in mconfig. It can be overridden here
 
@@ -18,12 +11,12 @@ prometheus:
   port: 8000
 
 tr069:
-  interface: eth0 # NOTE: this value must be consistent with dnsmasq.conf
+  interface: enp6s18 # NOTE: this value must be consistent with dnsmasq.conf
   port: 48080
   perf_mgmt_port: 8081
   # NOTE: this is the IP which enodeb will communicate with enodebd
   #       if this is ever changed in dnsd.yml, this needs to be updated too
-  public_ip: 18.116.99.179
+  public_ip: 127.0.0.1
 
 ssl:
   key: "./enodebd.key"
