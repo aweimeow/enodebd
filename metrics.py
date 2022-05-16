@@ -1,3 +1,8 @@
+# SPDX-FileCopyrightText: 2020 The Magma Authors.
+# SPDX-FileCopyrightText: 2022 Open Networking Foundation <support@opennetworking.org>
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
 """
 Copyright 2020 The Magma Authors.
 
@@ -53,10 +58,6 @@ STAT_ENODEB_REBOOT_TIMER_ACTIVE = Gauge(
 STAT_ENODEB_REBOOTS = Counter(
     'enodeb_reboots',
     'ENodeB reboots by enodebd', ['cause'],
-)
-STAT_ENODEB_LAST_CONFIGURED = Gauge(
-    'enodeb_last_configured',
-    'Information of configured eNodeB', ['serial_number', 'ip_address']
 )
 
 # Metrics that are accumulated by eNodeB. Use gauges to avoid 'double-counting',
@@ -134,3 +135,121 @@ STAT_PDCP_USER_PLANE_BYTES_UL = Gauge(
 STAT_PDCP_USER_PLANE_BYTES_DL = Gauge(
     'pdcp_user_plane_bytes_dl', 'User plane downlink bytes at PDCP', ['enodeb'],
 )
+
+# Aether-use Status
+
+STAT_ENODEB_LAST_CONFIGURED_TIME = Gauge(
+    'enodeb_last_configured_time',
+    'Information of configured eNodeB', ['serial_number', 'ip_address']
+)
+
+STATE_ENODEB_CURRENT_STATUS = Gauge(
+    'enodeb_current_status', 'The Current Configuration Status of specific enodeb', [
+        'serial_number',
+        'connected', 'disconnected', 'firmware_upgrading', 'configured'
+    ]
+)
+
+STATE_ENODEB_GPS_STATUS = Gauge(
+    'enodeb_gps_status', 'The Current GPS Status of specific enodeb', [
+        'serial_number'
+    ]
+)
+
+STATE_ENODEB_GPS_STATUS_LAT = Gauge(
+    'enodeb_gps_status_lat', 'The Current GPS Latitude Status of specific enodeb', [
+        'serial_number'
+    ]
+)
+
+STATE_ENODEB_GPS_STATUS_LONG = Gauge(
+    'enodeb_gps_status_long', 'The Current GPS Longtitude Status of specific enodeb', [
+        'serial_number'
+    ]
+)
+
+STATE_ENODEB_OP_STATE = Gauge(
+    'enodeb_op_status', 'The Current Operating Status of specific enodeb', [
+        'serial_number', 'op_state'
+    ]
+)
+
+# key = serial number / value = labels (serial_number, ip_address, )
+stat_enodeb_last_configured_time_dict = dict()
+# key = serial number / value = labels (sn, connected, disconnected, firmware_upgrading, configured)
+state_enodeb_current_status_dict = dict()
+state_enodeb_op_status_dict = dict()
+
+
+def set_enb_last_configured_time(serial_number, ip_address, time):
+    if serial_number in stat_enodeb_last_configured_time_dict:
+        STAT_ENODEB_LAST_CONFIGURED_TIME.remove(
+            *stat_enodeb_last_configured_time_dict.pop(serial_number)
+        )
+    else:
+        stat_enodeb_last_configured_time_dict[serial_number] = [
+            serial_number, ip_address
+        ]
+
+    STAT_ENODEB_LAST_CONFIGURED_TIME.labels(
+        serial_number=serial_number,
+        ip_address=ip_address
+    ).set(time)
+
+def set_enb_status(serial_number, status=["connected", "disconnected", "firmware_upgrading", "configured"]):
+    status_list = ["connected", "disconnected", "firmware_upgrading", "configured"]
+
+    if serial_number in state_enodeb_current_status_dict:
+        STATE_ENODEB_CURRENT_STATUS.remove(
+            *state_enodeb_current_status_dict.pop(serial_number)
+        )
+    else:
+        state_enodeb_current_status_dict[serial_number] = [
+            serial_number,
+            int(status == "connected"),
+            int(status == "disconnected"),
+            int(status == "firmware_upgrading"),
+            int(status == "configured")
+        ]
+
+    STATE_ENODEB_CURRENT_STATUS.labels(
+        serial_number=serial_number,
+        connected=int(status == "connected"),
+        disconnected=int(status == "disconnected"),
+        firmware_upgrading=int(status == "firmware_upgrading"),
+        configured=int(status == "configured")
+    ).set(status_list.index(status))
+
+def set_enb_gps_status(serial_number, lat, long, gps_state):
+    mapped_status = int()
+    if gps_state in ["Success", "Running", "1"]:
+        mapped_status = 1
+    else:
+        mapped_status = 0
+
+    lat_div_million = float(lat) / 1000000
+    lon_div_million = float(long) / 1000000
+
+    STATE_ENODEB_GPS_STATUS.labels(serial_number=serial_number).set(mapped_status)
+    STATE_ENODEB_GPS_STATUS_LAT.labels(serial_number=serial_number).set(lat_div_million)
+    STATE_ENODEB_GPS_STATUS_LONG.labels(serial_number=serial_number).set(lon_div_million)
+
+def set_enb_op_status(serial_number, op_state):
+    mapped_status = int()
+    if op_state in ["enabled"]:
+        mapped_status = 1
+    else:
+        mapped_status = 0
+
+    if serial_number in state_enodeb_op_status_dict:
+        STATE_ENODEB_OP_STATE.remove(
+            *state_enodeb_op_status_dict.pop(serial_number)
+        )
+    else:
+        state_enodeb_op_status_dict[serial_number] = [
+            serial_number, op_state
+        ]
+
+    STATE_ENODEB_OP_STATE.labels(
+        serial_number=serial_number, op_state=op_state
+    ).set(mapped_status)

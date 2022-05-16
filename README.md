@@ -50,3 +50,6 @@ scrape_configs:
 $ docker run -p 9090:9090 -v /home/ubuntu/magma-enodebd-new/prometheus.yml:/etc/prometheus/prometheus.yml prom/prometheus
 ```
 
+# License
+
+This project is under 3-Clause BSD license.

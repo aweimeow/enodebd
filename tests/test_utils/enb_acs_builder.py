@@ -1,15 +1,7 @@
-"""
-Copyright 2020 The Magma Authors.
-
-This source code is licensed under the BSD-style license found in the
-LICENSE file in the root directory of this source tree.
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-"""
+# SPDX-FileCopyrightText: 2020 The Magma Authors.
+# SPDX-FileCopyrightText: 2022 Open Networking Foundation <support@opennetworking.org>
+#
+# SPDX-License-Identifier: BSD-3-Clause
 
 import asyncio
 from typing import Dict
@@ -74,7 +66,7 @@ class EnodebAcsStateMachineBuilder:
             mconfig = EnodebConfigBuilder.get_mconfig(device)
         if not service_config:
             service_config = EnodebConfigBuilder.get_service_config()
-        with mock.patch('magma.common.service.MagmaService') as MockService:
+        with mock.patch('common.service.MagmaService') as MockService:
             MockService.config = service_config
             MockService.mconfig = mconfig
             MockService.loop = event_loop
@@ -85,7 +77,7 @@ class EnodebAcsStateMachineBuilder:
         event_loop = asyncio.get_event_loop()
         mconfig = EnodebConfigBuilder.get_multi_enb_mconfig()
         service_config = EnodebConfigBuilder.get_service_config()
-        with mock.patch('magma.common.service.MagmaService') as MockService:
+        with mock.patch('common.service.MagmaService') as MockService:
             MockService.config = service_config
             MockService.mconfig = mconfig
             MockService.loop = event_loop

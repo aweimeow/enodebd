@@ -1,15 +1,7 @@
-"""
-Copyright 2020 The Magma Authors.
-
-This source code is licensed under the BSD-style license found in the
-LICENSE file in the root directory of this source tree.
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-"""
+# SPDX-FileCopyrightText: 2020 The Magma Authors.
+# SPDX-FileCopyrightText: 2022 Open Networking Foundation <support@opennetworking.org>
+#
+# SPDX-License-Identifier: BSD-3-Clause
 
 import base64
 
@@ -19,6 +11,25 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.x509.oid import NameOID
 from common.serialization_utils import write_to_file_atomically
 
+
+def load_key_bytes(key_file):
+    """Load a private key encoded in PEM format
+
+    Args:
+        key_file: path to the key file
+
+    Returns:
+        Bytes
+
+    Raises:
+        IOError: If file cannot be opened
+        ValueError: If the file content cannot be decoded successfully
+        TypeError: If the key_file is encrypted
+    """
+    with open(key_file, 'rb') as f:
+        key_bytes = f.read()
+
+    return key_bytes
 
 def load_key(key_file):
     """Load a private key encoded in PEM format
@@ -128,6 +139,23 @@ def create_csr(
 
     return csr
 
+def load_cert_bytes(cert_file):
+    """Load certificate from a file
+
+    Args:
+        cert_file: path to file storing the cert in PEM format
+
+    Returns:
+        cert: an instance of x509.Certificate
+
+    Raises:
+        IOError: If file cannot be opened
+        ValueError: If the file content cannot be decoded successfully
+    """
+    with open(cert_file, 'rb') as f:
+        cert_pem = f.read()
+
+    return cert_pem
 
 def load_cert(cert_file):
     """Load certificate from a file

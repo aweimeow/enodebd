@@ -1,16 +1,7 @@
-"""
-Copyright 2020 The Magma Authors.
-
-This source code is licensed under the BSD-style license found in the
-LICENSE file in the root directory of this source tree.
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-"""
-
+# SPDX-FileCopyrightText: 2020 The Magma Authors.
+# SPDX-FileCopyrightText: 2022 Open Networking Foundation <support@opennetworking.org>
+#
+# SPDX-License-Identifier: BSD-3-Clause
 
 class ParameterName():
     # Top-level objects
@@ -18,7 +9,7 @@ class ParameterName():
     FAP_SERVICE = 'FAPService'
 
     # Device info parameters
-    GPS_STATUS = 'GPS status'
+    GPS_STATUS = 'gps_status'
     PTP_STATUS = 'PTP status'
     MME_STATUS = 'MME status'
     REM_STATUS = 'REM status'
@@ -38,40 +29,43 @@ class ParameterName():
     BAND_CAPABILITY = 'Band capability'
 
     # RF-related parameters
-    EARFCNDL = 'earfcndl1'
-    EARFCNUL = 'earfcnul1'
-    EARFCNDL2 = 'earfcndl2'
-    EARFCNUL2 = 'earfcnul2'
-    EARFCNDL_LIST = 'earfcndl_list'
-    EARFCNUL_LIST = 'earfcnul_list'
+    EARFCNDL = 'earfcn_downlink1'
+    EARFCNUL = 'earfcn_uplink1'
+    EARFCNDL2 = 'earfcn_downlink2'
+    EARFCNUL2 = 'earfcn_uplink2'
+    EARFCNDL_LIST = 'earfcn_downlink_list'
+    EARFCNUL_LIST = 'earfcn_uplink_list'
 
-    FREQ_BAND_1 = "freq_band_1"
-    FREQ_BAND_2 = "freq_band_2"
+    FREQ_BAND_1 = "frequency_band_1"
+    FREQ_BAND_2 = "frequency_band_2"
     FREQ_BAND_LIST = "freq_band_list"
 
     BAND = 'Band'
     PCI = 'PCI'
-    DL_BANDWIDTH = 'DL bandwidth'
-    UL_BANDWIDTH = 'UL bandwidth'
-    SUBFRAME_ASSIGNMENT = 'Subframe assignment'
-    SPECIAL_SUBFRAME_PATTERN = 'Special subframe pattern'
+    DL_BANDWIDTH = 'downlink_bandwidth'
+    UL_BANDWIDTH = 'uplink_bandwidth'
     TX_POWER = "tx_power"
     TUNNEL_TYPE = "tunnel_type"
 
     # Radio Resource Management (RRM) parameters
     CARRIER_AGG_ENABLE = "carrier_agg_enable"
     CARRIER_NUMBER = "carrier_number"
-    CONTIGUOUS_CC = "contiguous_cc"
+    CONTIGUOUS_CC = "is_ca_frequency_contiguous"
 
     # Other LTE parameters
-    ADMIN_STATE = 'Admin state'
+    ADMIN_STATE = 'admin_state'
     OP_STATE = 'Opstate'
     RF_TX_STATUS = 'RF TX status'
 
     # RAN parameters
     CELL_RESERVED = 'Cell reserved'
     CELL_BARRED = 'Cell barred'
-    PRIM_SOURCE = "prim_source"
+    PRIM_SOURCE = "primary_source"
+
+    # Cell parameters
+    CELL_ENABLE64QAM = "enable64qam"
+    SPECIAL_SUBFRAME_PATTERN = 'subframe_configuration'
+    SUBFRAME_ASSIGNMENT = 'subframe_assignment'
 
     # Core network parameters
     MME_IP = 'MME IP'
@@ -90,22 +84,22 @@ class ParameterName():
     # PLMN arrays are added below
     TAC = 'tac'
     TAC2 = 'tac2'
-    IP_SEC_ENABLE = 'IPSec enable'
-    MME_POOL_ENABLE = 'MME pool enable'
+    IP_SEC_ENABLE = 'ipsec_enable'
+    MME_POOL_ENABLE = 'mme_pool_enable'
 
     # Management server parameters
-    PERIODIC_INFORM_ENABLE = 'Periodic inform enable'
-    PERIODIC_INFORM_INTERVAL = 'Periodic inform interval'
-    ENABLE_CWMP = "enable_cwmp"
+    PERIODIC_INFORM_ENABLE = 'periodic_inform_enable'
+    PERIODIC_INFORM_INTERVAL = 'periodic_inform_interval'
+    CWMP_ENABLE = "cwmp_enable"
 
     # Performance management parameters
-    PERF_MGMT_ENABLE = 'Perf mgmt enable'
-    PERF_MGMT_UPLOAD_INTERVAL = 'Perf mgmt upload interval'
-    PERF_MGMT_UPLOAD_URL = 'Perf mgmt upload URL'
-    PERF_MGMT_USER = 'Perf mgmt username'
-    PERF_MGMT_PASSWORD = 'Perf mgmt password'
+    PERF_MGMT_ENABLE = 'perf_mgmt_enable'
+    PERF_MGMT_UPLOAD_INTERVAL = 'perf_mgmt_upload_interval'
+    PERF_MGMT_UPLOAD_URL = 'perf_mgmt_upload_url'
+    PERF_MGMT_USER = 'perf_mgmt_username'
+    PERF_MGMT_PASSWORD = 'perf_mgmt_password'
 
-    SAS_ENABLE = "sas_enabled"
+    SAS_ENABLE = "sas_enable"
     SAS_SERVER_URL = "sas_server_url"
     SAS_UID = "sas_uid"
     SAS_CATEGORY = "sas_category"
@@ -116,9 +110,9 @@ class ParameterName():
     SAS_HEIGHT_TYPE = "sas_height_type"
     SAS_FCCID = "sas_fccid"
     SAS_MEAS_CAPS = "sas_measure_capability"
-    SAS_MANU_ENABLE = "sas_manufacturer_prefix_enable"
+    SAS_MANU_ENABLE = "manufacturer_prefix_enable"
 
-    SAS_CPI_ENABLE = "sas_cpi_enable"
+    SAS_CPI_ENABLE = "cpi_enable"
     SAS_CPI_IPE = "sas_cpi_ipe"
     SAS_CPI_NAME = "sas_cpi_name"
     SAS_CPI_ID = "sas_cpi_id"
@@ -127,6 +121,10 @@ class ParameterName():
     SAS_ANTA_DOWNTILT = "sas_antenna_downtilt"
     SAS_ANTA_GAIN = "sas_antenna_gain"
     SAS_ANTA_BEAMWIDTH = "sas_antenna_beamwidth"
+
+    FIRMWARE_VERSION = "firmware_version"
+    FIRMWARE_URL = "firmware_url"
+    FIRMWARE_SIZE = "firmware_size"
 
 
 class TrParameterType():

@@ -1,15 +1,7 @@
-"""
-Copyright 2020 The Magma Authors.
-
-This source code is licensed under the BSD-style license found in the
-LICENSE file in the root directory of this source tree.
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-"""
+# SPDX-FileCopyrightText: 2020 The Magma Authors.
+# SPDX-FileCopyrightText: 2022 Open Networking Foundation <support@opennetworking.org>
+#
+# SPDX-License-Identifier: BSD-3-Clause
 
 import asyncio
 import faulthandler
@@ -230,6 +222,7 @@ class MagmaService(Service303Servicer):
         is received or a StopService rpc call is made on the Service303
         interface.
         """
+
         logging.info("Starting %s...", self._name)
         (host, port) = ServiceRegistry.get_service_address(self._name)
         self._port = self._server.add_insecure_port('{}:{}'.format(host, port))
@@ -270,7 +263,12 @@ class MagmaService(Service303Servicer):
         self._state = ServiceInfo.STOPPING
         self._server.stop(0)
 
-        for pending_task in asyncio.Task.all_tasks(self._loop):
+        try:
+            asyncio_all_tasks = asyncio.all_tasks
+        except AttributeError as e:
+            asyncio_all_tasks = asyncio.Task.all_tasks
+
+        for pending_task in asyncio_all_tasks(self._loop):
             pending_task.cancel()
 
         self._state = ServiceInfo.STOPPED

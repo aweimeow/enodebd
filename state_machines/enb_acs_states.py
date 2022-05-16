@@ -1,15 +1,7 @@
-"""
-Copyright 2020 The Magma Authors.
-
-This source code is licensed under the BSD-style license found in the
-LICENSE file in the root directory of this source tree.
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-"""
+# SPDX-FileCopyrightText: 2020 The Magma Authors.
+# SPDX-FileCopyrightText: 2022 Open Networking Foundation <support@opennetworking.org>
+#
+# SPDX-License-Identifier: BSD-3-Clause
 
 import time
 from abc import ABC, abstractmethod
@@ -18,6 +10,7 @@ from typing import Any, Optional
 
 import metrics
 
+from configuration.service_configs import load_service_config
 from data_models.data_model import InvalidTrParamPath
 from data_models.data_model_parameters import ParameterName
 from device_config.configuration_init import build_desired_config
@@ -143,16 +136,25 @@ class WaitInformState(EnodebAcsState):
         """
         if not isinstance(message, models.Inform):
             return AcsReadMsgResult(False, None)
+
         process_inform_message(
             message, self.acs.data_model,
             self.acs.device_cfg,
         )
+
+        # Switch enodeb status to connected
+        metrics.set_enb_status(
+            self.acs.device_cfg.get_parameter("Serial number"),
+            status="connected"
+        )
+
         if does_inform_have_event(message, '1 BOOT'):
             return AcsReadMsgResult(True, self.boot_transition)
         return AcsReadMsgResult(True, None)
 
     def get_msg(self, message: Any) -> AcsMsgAndTransition:
         """ Reply with InformResponse """
+        
         response = models.InformResponse()
         # Set maxEnvelopes to 1, as per TR-069 spec
         response.MaxEnvelopes = 1
@@ -969,14 +971,23 @@ class WaitSetParameterValuesState(EnodebAcsState):
                     )
             self._mark_as_configured()
 
-            metrics.STAT_ENODEB_LAST_CONFIGURED.labels(
-                serial_number=self.acs.device_cfg.get_parameter("Serial number"),
-                ip_address=self.acs.device_cfg.get_parameter("ip_address")
-            ).set(int(time.time()))
+            metrics.set_enb_last_configured_time(
+                self.acs.device_cfg.get_parameter("Serial number"),
+                self.acs.device_cfg.get_parameter("ip_address"),
+                int(time.time())
+            )
+
+            # Switch enodeb status to configured
+            metrics.set_enb_status(
+                self.acs.device_cfg.get_parameter("Serial number"),
+                status="configured"
+            )
 
             if not self.acs.are_invasive_changes_applied:
                 return AcsReadMsgResult(True, self.apply_invasive_transition)
+
             return AcsReadMsgResult(True, self.done_transition)
+
         elif type(message) == models.Fault:
             logger.error(
                 'Received Fault in response to SetParameterValues, '
@@ -1051,6 +1062,12 @@ class EndSessionState(EnodebAcsState):
         return AcsReadMsgResult(False, None)
 
     def get_msg(self, message: Any) -> AcsMsgAndTransition:
+        # Switch enodeb status to disconnected
+        metrics.set_enb_status(
+            self.acs.device_cfg.get_parameter("Serial number"),
+            status="disconnected"
+        )
+
         request = models.DummyInput()
         return AcsMsgAndTransition(request, None)
 
@@ -1265,6 +1282,190 @@ class WaitRebootDelayState(EnodebAcsState):
 
     def state_description(self) -> str:
         return 'Waiting after eNB reboot to prevent race conditions'
+
+
+class DownloadState(EnodebAcsState):
+    """
+    The eNB handler will enter this state when firmware version is older than desired version.
+    """
+
+    def __init__(self, acs: EnodebAcsStateMachine, when_done: str):
+        super().__init__()
+        self.acs = acs
+        self.done_transition = when_done
+
+    def get_msg(self, message: Any) -> AcsMsgAndTransition:
+
+        # Switch enodeb status to firmware upgrading
+        metrics.set_enb_status(
+            self.acs.device_cfg.get_parameter("Serial number"),
+            status="firmware_upgrading"
+        )
+
+        request = models.Download()
+        request.CommandKey = "20220206215200"
+        request.FileType = "1 Firmware Upgrade Image"
+        request.URL = "http://10.128.250.131/firmware/Qproject_TEST3918_2102241222.ffw"
+        request.Username = ""
+        request.Password = ""
+        request.FileSize = 57208579
+        request.TargetFileName = "Qproject_TEST3918_2102241222.ffw"
+        request.DelaySeconds = 0
+        request.SuccessURL = ""
+        request.FailureURL = ""
+
+        return AcsMsgAndTransition(request, self.done_transition)
+
+    def state_description(self) -> str:
+        return 'Upgrade the firmware the desired version'
+
+class WaitDownloadResponseState(EnodebAcsState):
+    """
+    The eNB handler will enter this state after the Download command sent.
+    """
+
+    def __init__(self, acs: EnodebAcsStateMachine, when_done: str):
+        super().__init__()
+        self.acs = acs
+        self.done_transition = when_done
+        
+    def read_msg(self, message: Any) -> AcsReadMsgResult:
+        if not isinstance(message, models.DownloadResponse):
+            return AcsReadMsgResult(False, None)
+        return AcsReadMsgResult(True, None)
+
+    def get_msg(self, message: Any) -> AcsMsgAndTransition:
+        """ Reply with empty message """
+        logger.info("Received Download Response from eNodeB")
+        return AcsMsgAndTransition(models.DummyInput(), self.done_transition)
+
+    def state_description(self) -> str:
+        return "Wait DownloadResponse message"
+
+class WaitInformTransferCompleteState(EnodebAcsState):
+    """
+    The eNB handler will enter this state after firmware upgraded and rebooted
+    """
+
+    REBOOT_TIMEOUT = 300 # In seconds
+    INFORM_EVENT_CODE = "7 TRANSFER COMPLETE"
+    PREIODIC_EVENT_CODE = "2 PERIODIC"
+
+    def __init__(self, acs: EnodebAcsStateMachine, when_done: str, when_periodic: str, when_timeout: str):
+        super().__init__()
+        self.acs = acs
+        self.done_transition = when_done
+        self.periodic_update_transition = when_periodic
+        self.timeout_transition = when_timeout
+        self.timeout_timer = None
+        self.timer_handle = None
+    
+    def enter(self):
+        print("Get into the TransferComplete State")
+        self.timeout_timer = StateMachineTimer(self.REBOOT_TIMEOUT)
+
+        def check_timer() -> None:
+            if self.timeout_timer.is_done():
+                self.acs.transition(self.timeout_transition)
+                raise Tr069Error("Didn't receive Inform response after rebooting")
+
+        self.timer_handle = self.acs.event_loop.call_later(
+            self.REBOOT_TIMEOUT,
+            check_timer,
+        )
+
+    def exit(self):
+        self.timer_handle.cancel()
+        self.timeout_timer = None
+
+    def get_msg(self, message: Any) -> AcsMsgAndTransition:
+        return AcsMsgAndTransition(models.DummyInput(), None)
+
+    def read_msg(self, message: Any) -> AcsReadMsgResult:
+        if not isinstance(message, models.Inform):
+            return AcsReadMsgResult(False, None)
+        if does_inform_have_event(message, self.PREIODIC_EVENT_CODE):
+            logger.info("Receive Periodic update from enodeb")
+            return AcsReadMsgResult(True, self.periodic_update_transition)
+        if does_inform_have_event(message, self.INFORM_EVENT_CODE):
+            logger.info("Receive Transfer complete")
+            return AcsReadMsgResult(True, self.done_transition)
+
+        # Unhandled situation
+        return AcsReadMsgResult(False, None)
+
+    def state_description(self) -> str:
+        return "Wait DownloadResponse message"
+
+class CheckStatusState(EnodebAcsState):
+    """
+    Sent a request to enodeb to get the basic status from device
+    """
+
+    def __init__(
+        self,
+        acs: EnodebAcsStateMachine,
+        when_done: str,
+    ):
+        super().__init__()
+        self.acs = acs
+        self.done_transition = when_done
+
+    def get_msg(self, message: Any) -> AcsMsgAndTransition:
+        """
+        Send with GetParameterValuesRequest
+        """
+
+        self.PARAMETERS = [
+            ParameterName.RF_TX_STATUS,
+            ParameterName.GPS_STATUS,
+            ParameterName.GPS_LAT,
+            ParameterName.GPS_LONG,
+        ]
+
+        request = models.GetParameterValues()
+        request.ParameterNames = models.ParameterNames()
+        request.ParameterNames.arrayType = 'xsd:string[1]'
+        request.ParameterNames.string = []
+
+        for name in self.PARAMETERS:
+            if self.acs.data_model.is_parameter_present(name):
+                path = self.acs.data_model.get_parameter(name).path
+                request.ParameterNames.string.append(path)
+
+        request.ParameterNames.arrayType = \
+            'xsd:string[%d]' % len(request.ParameterNames.string)
+
+        return AcsMsgAndTransition(request, self.done_transition)
+
+    def read_msg(self, message: Any) -> AcsReadMsgResult:
+
+        if not isinstance(message, models.GetParameterValuesResponse):
+            return AcsReadMsgResult(msg_handled=False, next_state=when_done)
+        
+        name_to_val = parse_get_parameter_values_response(self.acs.data_model, message, )
+        logger.info("CheckStatusState: %s", str(name_to_val))
+
+        # Call set_enb_gps_status to update the parameter in prometheus api
+        metrics.set_enb_gps_status(
+            self.acs.device_cfg.get_parameter("Serial number"),
+            name_to_val["GPS lat"], name_to_val["GPS long"],
+            name_to_val["gps_status"]
+        )
+
+        # Call set_enb_op_status to update the parameter in prometheus api
+        metrics.set_enb_op_status(
+            self.acs.device_cfg.get_parameter("Serial number"),
+            name_to_val["Opstate"]
+        )
+
+        # Sleep 1 minute and check status again
+        time.sleep(60)
+
+        return AcsReadMsgResult(msg_handled=True, next_state=self.done_transition)
+
+    def state_description(self) -> str:
+        return 'Getting'
 
 
 class ErrorState(EnodebAcsState):

@@ -1,23 +1,15 @@
-"""
-Copyright 2020 The Magma Authors.
-
-This source code is licensed under the BSD-style license found in the
-LICENSE file in the root directory of this source tree.
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-"""
+# SPDX-FileCopyrightText: 2020 The Magma Authors.
+# SPDX-FileCopyrightText: 2022 Open Networking Foundation <support@opennetworking.org>
+#
+# SPDX-License-Identifier: BSD-3-Clause
 
 from typing import Any
 
 GET_IP_FROM_IF_PATH = \
-    'magma.enodebd.device_config.configuration_init.get_ip_from_if'
+    'device_config.configuration_init.get_ip_from_if'
 
 LOAD_SERVICE_MCONFIG_PATH = \
-    'magma.enodebd.device_config.configuration_init.load_service_mconfig_as_json'
+    'device_config.configuration_init.load_service_mconfig_as_json'
 
 
 def mock_get_ip_from_if(

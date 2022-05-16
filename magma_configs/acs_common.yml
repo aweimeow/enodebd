@@ -1,3 +1,8 @@
+# SPDX-FileCopyrightText: 2020 The Magma Authors.
+# SPDX-FileCopyrightText: 2022 Open Networking Foundation <support@opennetworking.org>
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
 bandwidthMhz: 100
 specialSubframePattern: 7
 earfcndl: 44490

@@ -1,15 +1,8 @@
-"""
-Copyright 2020 The Magma Authors.
+# SPDX-FileCopyrightText: 2020 The Magma Authors.
+# SPDX-FileCopyrightText: 2022 Open Networking Foundation <support@opennetworking.org>
+#
+# SPDX-License-Identifier: BSD-3-Clause
 
-This source code is licensed under the BSD-style license found in the
-LICENSE file in the root directory of this source tree.
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-"""
 import logging
 import os
 from unittest.mock import Mock, call, patch
@@ -688,7 +681,7 @@ class FreedomFiOneTests(EnodebHandlerTestCase):
         status.set_magma_device_cfg(n1, device_config)
         expected = [
             call.set_parameter(param_name='RF TX status', value=True),
-            call.set_parameter(param_name='GPS status', value=True),
+            call.set_parameter(param_name='gps_status', value=True),
             call.set_parameter(param_name='PTP status', value=True),
             call.set_parameter(param_name='MME status', value=True),
             call.set_parameter(param_name='Opstate', value=True),
@@ -716,7 +709,7 @@ class FreedomFiOneTests(EnodebHandlerTestCase):
         device_config = Mock()
         expected = [
             call.set_parameter(param_name='RF TX status', value=True),
-            call.set_parameter(param_name='GPS status', value=True),
+            call.set_parameter(param_name='gps_status', value=True),
             call.set_parameter(param_name='PTP status', value=True),
             call.set_parameter(param_name='MME status', value=False),
             call.set_parameter(param_name='Opstate', value=True),
@@ -729,7 +722,7 @@ class FreedomFiOneTests(EnodebHandlerTestCase):
         device_config = Mock()
         expected = [
             call.set_parameter(param_name='RF TX status', value=True),
-            call.set_parameter(param_name='GPS status', value=True),
+            call.set_parameter(param_name='gps_status', value=True),
             call.set_parameter(param_name='PTP status', value=False),
             call.set_parameter(param_name='MME status', value=True),
             call.set_parameter(param_name='Opstate', value=True),
@@ -742,7 +735,7 @@ class FreedomFiOneTests(EnodebHandlerTestCase):
         device_config = Mock()
         expected = [
             call.set_parameter(param_name='RF TX status', value=True),
-            call.set_parameter(param_name='GPS status', value=True),
+            call.set_parameter(param_name='gps_status', value=True),
             call.set_parameter(param_name='PTP status', value=True),
             call.set_parameter(param_name='MME status', value=True),
             call.set_parameter(param_name='Opstate', value=False),
@@ -755,7 +748,7 @@ class FreedomFiOneTests(EnodebHandlerTestCase):
         device_config = Mock()
         expected = [
             call.set_parameter(param_name='RF TX status', value=False),
-            call.set_parameter(param_name='GPS status', value=True),
+            call.set_parameter(param_name='gps_status', value=True),
             call.set_parameter(param_name='PTP status', value=True),
             call.set_parameter(param_name='MME status', value=True),
             call.set_parameter(param_name='Opstate', value=True),
@@ -768,7 +761,7 @@ class FreedomFiOneTests(EnodebHandlerTestCase):
         device_config = Mock()
         expected = [
             call.set_parameter(param_name='RF TX status', value=True),
-            call.set_parameter(param_name='GPS status', value=False),
+            call.set_parameter(param_name='gps_status', value=False),
             call.set_parameter(param_name='PTP status', value=False),
             call.set_parameter(param_name='MME status', value=True),
             call.set_parameter(param_name='Opstate', value=True),
@@ -781,7 +774,7 @@ class FreedomFiOneTests(EnodebHandlerTestCase):
         device_config = Mock()
         expected = [
             call.set_parameter(param_name='RF TX status', value=True),
-            call.set_parameter(param_name='GPS status', value=True),
+            call.set_parameter(param_name='gps_status', value=True),
             call.set_parameter(param_name='PTP status', value=True),
             call.set_parameter(param_name='MME status', value=True),
             call.set_parameter(param_name='Opstate', value=True),
@@ -794,7 +787,7 @@ class FreedomFiOneTests(EnodebHandlerTestCase):
         device_config = Mock()
         expected = [
             call.set_parameter(param_name='RF TX status', value=True),
-            call.set_parameter(param_name='GPS status', value=True),
+            call.set_parameter(param_name='gps_status', value=True),
             call.set_parameter(param_name='PTP status', value=True),
             call.set_parameter(param_name='MME status', value=True),
             call.set_parameter(param_name='Opstate', value=True),

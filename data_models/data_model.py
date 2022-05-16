@@ -1,15 +1,7 @@
-"""
-Copyright 2020 The Magma Authors.
-
-This source code is licensed under the BSD-style license found in the
-LICENSE file in the root directory of this source tree.
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-"""
+# SPDX-FileCopyrightText: 2020 The Magma Authors.
+# SPDX-FileCopyrightText: 2022 Open Networking Foundation <support@opennetworking.org>
+#
+# SPDX-License-Identifier: BSD-3-Clause
 
 from abc import ABC, abstractmethod
 from collections import namedtuple
@@ -21,7 +13,7 @@ TrParam = namedtuple('TrParam', ['path', 'is_invasive', 'type', 'is_optional'])
 
 # We may want to model nodes in the datamodel that are derived from other fields
 # in the datamodel and thus maynot have a representation in tr69.
-# e.g PTP_STATUS in FreedomFiOne is True iff GPS is in sync and SyncStatus is
+# e.g PTP_STATUS in Sercomm is True iff GPS is in sync and SyncStatus is
 # True.
 # Explicitly map these params to invalid paths so setters and getters know they
 # should not try to read or write these nodes on the eNB side.

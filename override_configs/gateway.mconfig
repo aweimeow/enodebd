@@ -3,7 +3,7 @@
     "enodebd": {
       "@type": "type.googleapis.com/magma.mconfig.EnodebD",
       "bandwidthMhz": 20,
-      "specialSubframePattern": 7,
+      "special_subframe_pattern": 7,
       "earfcndl": 44490,
       "logLevel": "INFO",
       "plmnidList": "305011",

@@ -1,21 +1,14 @@
-"""
-Copyright 2020 The Magma Authors.
-
-This source code is licensed under the BSD-style license found in the
-LICENSE file in the root directory of this source tree.
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-"""
+# SPDX-FileCopyrightText: 2020 The Magma Authors.
+# SPDX-FileCopyrightText: 2022 Open Networking Foundation <support@opennetworking.org>
+#
+# SPDX-License-Identifier: BSD-3-Clause
 
 from threading import Thread
 from typing import List
 from unittest import mock
 
 from lte.protos.mconfig import mconfigs_pb2
+from configuration.service_configs import load_service_config
 from common.sentry import sentry_init
 from common.service import MagmaService
 from enodeb_status import (
@@ -26,11 +19,10 @@ from logger import EnodebdLogger as logger
 from state_machines.enb_acs_manager import StateMachineManager
 from orc8r.protos.service303_pb2 import State
 
-from enodebd_iptables_rules import set_enodebd_iptables_rule
 from rpc_servicer import EnodebdRpcServicer
 from stats_manager import StatsManager
 from tr069.server import tr069_server
-from prometheus_client import start_http_server
+from prometheus_client import start_http_server as prometheus_start_http_server
 
 
 def get_context(ip: str):
@@ -45,10 +37,21 @@ def main():
     """
     Top-level function for enodebd
     """
-    start_http_server(8000, addr="0.0.0.0")
-
     service = MagmaService('enodebd', mconfigs_pb2.EnodebD())
     logger.init()
+
+    enodebd_cfg = load_service_config('enodebd')
+    prometheus_cfg = enodebd_cfg.get("prometheus", None)
+
+    if not prometheus_cfg:
+        logger.warning("Prometheus configuration wasn't found in enodebd configuration.")
+    else:
+        prometheus_ip = prometheus_cfg.get("ip")
+        prometheus_port = prometheus_cfg.get("port")
+        prometheus_start_http_server(prometheus_port, addr=prometheus_ip)
+        logger.info(
+            "Starting Prometheus server on address %s:%d",
+            prometheus_ip, prometheus_port)
 
     # Optionally pipe errors to Sentry
     sentry_init(service_name=service.name)
@@ -81,9 +84,6 @@ def main():
     def get_enodeb_operational_states() -> List[State]:
         return get_operational_states(state_machine_manager, service.mconfig)
     service.register_operational_states_callback(get_enodeb_operational_states)
-
-    # Set eNodeBD iptables rules due to exposing public IP to eNodeB
-    service.loop.create_task(set_enodebd_iptables_rule())
 
     # Run the service loop
     service.run()

@@ -1,15 +1,7 @@
-"""
-Copyright 2020 The Magma Authors.
-
-This source code is licensed under the BSD-style license found in the
-LICENSE file in the root directory of this source tree.
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-"""
+# SPDX-FileCopyrightText: 2020 The Magma Authors.
+# SPDX-FileCopyrightText: 2022 Open Networking Foundation <support@opennetworking.org>
+#
+# SPDX-License-Identifier: BSD-3-Clause
 
 import json
 from collections import namedtuple
@@ -90,6 +82,8 @@ def build_desired_config(
     # Attempt to load device configuration from YANG before service mconfig
     enb_config = _get_enb_yang_config(device_config) or \
                  _get_enb_config(mconfig, device_config)
+
+    print(enb_config)
 
     _set_earfcn_freq_band_mode(
         device_config, cfg_desired, data_model,
@@ -190,7 +184,6 @@ def _get_enb_config(
         mconfig: mconfigs_pb2.EnodebD,
         device_config: EnodebConfiguration,
 ) -> SingleEnodebConfig:
-
     # The eNodeB parameters to be generated with default value,
     # It will load from eNB configs based on serial number or default value
     # The params is a nested list which contains 2 format of parameter names.
@@ -198,15 +191,22 @@ def _get_enb_config(
     #   magma_configs/serial_number/ and magma_configs/acs_common.yml
     # The second parameter is the name of gateway configuration in 
     #   override_configs/gateway.mconfig
+
+    # params.column1 = SingleEnodebConfig key
+    # params.column2 = sn config
+    # params.column3 = common_config
+    # params.column4 = mconfig
+
     params = [
-        ["earfcndl", "earfcndl"],
-        ["subframeAssignment", "subframe_assignment"],
-        ["special_subframe_pattern", "special_subframe_pattern"],
-        ["pci", "pci"],
-        ["plmnidList", "plmnid_list"],
-        ["tac", "tac"],
-        ["bandwidthMhz", "bandwidth_mhz"],
-        ["allowEnodebTransmit", "allow_enodeb_transmit"]
+        ["earfcndl", "earfcn_downlink1", "earfcndl" * 2],
+        ["subframe_assignment", "subframe_assignment", "subframeAssignment", "subframe_assignment"],
+        ["special_subframe_pattern", "subframe_configuration", "specialSubframePattern", "special_subframe_pattern"],
+        ["pci", "pci1", "pci", "pci"],
+        ["plmnid_list", "plmnid_list", "plmnidList", "plmnid_list"],
+        ["tac", "tac1", "tac", "tac"],
+        ["bandwidth_mhz", "downlink_bandwidth", "bandwidthMhz", "bandwidth_mhz"],
+        # Note: mconfig doesn't have allowEnodebTransmit
+        ["allow_enodeb_transmit", "allow_enodeb_transmit", "allowEnodebTransmit", "allowEnodebTransmit"]
     ]
     
     extend_params = ["cell_id", "mme_address", "mme_port"]
@@ -219,8 +219,8 @@ def _get_enb_config(
     enb_config = enb_configs.get(enb_serial, dict())
 
     for param in params:
-        params_dict[param[1]] = enb_config.get(param[0], 
-            common_config.get(param[0], mconfig.__getattribute__(param[1]))
+        params_dict[param[0]] = enb_config.get(param[1], 
+            common_config.get(param[0], mconfig.__getattribute__(param[0]))
         )
 
     for param in extend_params:

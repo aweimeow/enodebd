@@ -1,15 +1,7 @@
-"""
-Copyright 2020 The Magma Authors.
-
-This source code is licensed under the BSD-style license found in the
-LICENSE file in the root directory of this source tree.
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-"""
+# SPDX-FileCopyrightText: 2020 The Magma Authors.
+# SPDX-FileCopyrightText: 2022 Open Networking Foundation <support@opennetworking.org>
+#
+# SPDX-License-Identifier: BSD-3-Clause
 
 import json
 import os
@@ -477,9 +469,9 @@ def _format_as_bool(
 ) -> bool:
     """ Returns '1' for true, and '0' for false """
     stripped_value = str(param_value).lower().strip()
-    if stripped_value in {'true', '1'}:
+    if stripped_value in {'true', '1', 'enabled'}:
         return True
-    elif stripped_value in {'false', '0'}:
+    elif stripped_value in {'false', '0', 'disabled', 'InProgress'}:
         return False
     else:
         logger.warning(
@@ -498,7 +490,7 @@ def _get_gps_status_as_bool(enodeb: EnodebAcsStateMachine) -> bool:
                 # No translation to do.
                 return param
             stripped_value = param.lower().strip()
-            if stripped_value == '0' or stripped_value == '2':
+            if stripped_value in ['0', '2', 'inprogress']:
                 # 2 = GPS locking
                 return False
             elif stripped_value == '1':
@@ -508,7 +500,7 @@ def _get_gps_status_as_bool(enodeb: EnodebAcsStateMachine) -> bool:
                     'GPS status parameter not understood (%s)', param,
                 )
                 return False
-    except (KeyError, ConfigurationError):
+    except (KeyError, ConfigurationError, AttributeError):
         return False
 
 

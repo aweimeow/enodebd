@@ -1,15 +1,7 @@
-"""
-Copyright 2020 The Magma Authors.
-
-This source code is licensed under the BSD-style license found in the
-LICENSE file in the root directory of this source tree.
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-"""
+# SPDX-FileCopyrightText: 2020 The Magma Authors.
+# SPDX-FileCopyrightText: 2022 Open Networking Foundation <support@opennetworking.org>
+#
+# SPDX-License-Identifier: BSD-3-Clause
 
 import logging
 import os
@@ -94,10 +86,17 @@ def load_enb_config() -> Any:
     """
 
     ret = dict()
-    for fname in os.listdir(ENB_CONFIG_DIR):
+    for fname in filter(lambda x: x.endswith(".yml"), os.listdir(ENB_CONFIG_DIR)):
         sn = fname.replace(".yml", "")
         cfg_file_name = os.path.join(ENB_CONFIG_DIR, fname)
-        ret[sn] = _load_yaml_file(cfg_file_name)
+        sn_yaml = _load_yaml_file(cfg_file_name)
+
+        enb_cfg = dict()
+        for category in sn_yaml.values():
+            for key, value in category.items():
+                enb_cfg[key] = value
+
+        ret[sn] = enb_cfg
 
     return ret
 

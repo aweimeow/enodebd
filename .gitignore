@@ -1,0 +1,28 @@
+### Log ###
+*.log
+
+### Python ###
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+venv/
+
+### enodebd ###
+magma_configs/enodebd.yml
+magma_configs/serial_number/
+!magma_configs/serial_number/example.yml
+
+# enodebd generated proto model
+lte/
+orc8r/
+
+# enodebd proto files
+!proto_files/lte/
+!proto_files/orc8r/
+
+prometheus.yml
+metrics_pb2.py
+metrics_pb2_grpc.py
